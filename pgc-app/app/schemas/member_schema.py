@@ -1,18 +1,23 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.member import MemberRole, SubscriptionStatus
 
-
+def validate_password_72_bytes(v: str) -> str:
+    if len(v.encode("utf-8")) > 72:
+        raise ValueError("Password must be at most 72 bytes")
+    return v
+    
 class MemberCreate(BaseModel):
-    """Données reçues lors de l'inscription."""
     email: EmailStr
-    password: str          # mot de passe en clair (hashé avant stockage)
+    password: str
     first_name: str
     last_name: str
     phone: Optional[str] = None
+
+    _validate_password = field_validator("password")(validate_password_72_bytes)
 
 
 class MemberUpdate(BaseModel):
@@ -40,10 +45,10 @@ class MemberOut(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    """Corps de la requête de connexion."""
     email: EmailStr
     password: str
 
+    _validate_password = field_validator("password")(validate_password_72_bytes)
 
 class TokenOut(BaseModel):
     """Réponse après connexion réussie."""

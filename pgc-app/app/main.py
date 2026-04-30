@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.database import Base, engine
-from app.routers import auth, members, courses, bookings
+from app.routers import auth, members, courses, bookings, subscriptions
 
-# Crée les tables si elles n'existent pas
+# Crée toutes les tables au démarrage
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -16,7 +16,6 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS — autorise l'app mobile Flutter à appeler l'API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # restreindre en production
@@ -25,11 +24,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
 app.include_router(auth.router)
 app.include_router(members.router)
 app.include_router(courses.router)
 app.include_router(bookings.router)
+app.include_router(subscriptions.router)
 
 
 @app.get("/", tags=["Health"])

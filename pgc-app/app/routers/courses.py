@@ -9,7 +9,7 @@ from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
 from app.models.member import Member
 from app.routers.members import get_current_member, require_admin
-from app.schemas.course import CourseCreate, CourseOut, CourseUpdate
+from app.schemas.course_schema import CourseCreate, CourseOut, CourseUpdate
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 

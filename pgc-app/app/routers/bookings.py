@@ -9,7 +9,8 @@ from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
 from app.models.member import Member
 from app.routers.members import get_current_member, require_admin
-from app.schemas.booking import BookingCreate, BookingOut
+from app.schemas.booking_schema import BookingCreate, BookingOut
+from app.services import email_service
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -48,16 +49,13 @@ def create_booking(
     current: Member = Depends(get_current_member),
     db: Session = Depends(get_db),
 ):
-    # Vérifier que le cours existe
     course = db.query(Course).filter(Course.id == data.course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Cours introuvable")
 
-    # Cours déjà passé ?
     if course.start_time < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Ce cours est déjà passé")
 
-    # Déjà réservé ?
     existing = (
         db.query(Booking)
         .filter(
@@ -70,20 +68,22 @@ def create_booking(
     if existing:
         raise HTTPException(status_code=400, detail="Vous êtes déjà inscrit à ce cours")
 
-    # Capacité disponible ou liste d'attente ?
     count = _confirmed_count(data.course_id, db)
     status = (
         BookingStatus.confirmed if count < course.max_capacity else BookingStatus.waitlist
     )
 
-    booking = Booking(
-        member_id=current.id,
-        course_id=data.course_id,
-        status=status,
-    )
+    booking = Booking(member_id=current.id, course_id=data.course_id, status=status)
     db.add(booking)
     db.commit()
     db.refresh(booking)
+
+    email_service.send_booking_confirmation(
+        first_name=current.first_name,
+        email=current.email,
+        course_name=course.name,
+        start_time=course.start_time.strftime("%d/%m/%Y à %H:%M"),
+    )
     return booking
 
 
@@ -109,7 +109,13 @@ def cancel_booking(
     booking.cancelled_at = datetime.now(timezone.utc)
     db.commit()
 
-    # Promouvoir le premier en liste d'attente
+    email_service.send_booking_cancellation(
+        first_name=current.first_name,
+        email=current.email,
+        course_name=booking.course.name,
+    )
+
+    # Promouvoir automatiquement le premier en liste d'attente
     next_waiting = (
         db.query(Booking)
         .filter(
@@ -122,6 +128,15 @@ def cancel_booking(
     if next_waiting:
         next_waiting.status = BookingStatus.confirmed
         db.commit()
+        # Notifier le membre promu
+        promoted_member = db.query(Member).filter(Member.id == next_waiting.member_id).first()
+        if promoted_member:
+            email_service.send_waitlist_promoted(
+                first_name=promoted_member.first_name,
+                email=promoted_member.email,
+                course_name=booking.course.name,
+                start_time=booking.course.start_time.strftime("%d/%m/%Y à %H:%M"),
+            )
 
     db.refresh(booking)
     return booking

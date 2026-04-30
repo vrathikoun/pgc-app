@@ -1,15 +1,16 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from typing import List
 
+from app.core.security import decode_access_token
 from app.database import get_db
 from app.models.member import Member, MemberRole
-from app.schemas.member import MemberOut, MemberUpdate
-from app.core.security import decode_access_token
+from app.schemas.member_schema import MemberOut, MemberUpdate
 
 router = APIRouter(prefix="/members", tags=["Members"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 def get_current_member(
@@ -19,7 +20,6 @@ def get_current_member(
     payload = decode_access_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Token invalide ou expiré")
-
     member = db.query(Member).filter(Member.id == int(payload["sub"])).first()
     if not member or not member.is_active:
         raise HTTPException(status_code=401, detail="Membre introuvable")
