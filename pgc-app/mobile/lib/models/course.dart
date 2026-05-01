@@ -36,20 +36,17 @@ class Course {
         maxCapacity: json['max_capacity'],
         coachId: json['coach_id'],
         spotsAvailable: json['spots_available'],
-        createdAt: DateTime.parse(json['created_at']),
+        createdAt: DateTime.parse(json['created_at']).toLocal(),
       );
 
   bool get isFull => spotsAvailable != null && spotsAvailable! == 0;
 
   String get courseTypeLabel {
     const labels = {
-      'boxing': '🥊 Boxe',
-      'mma': '🤼 MMA',
-      'kickboxing': '🦵 Kickboxing',
-      'muay_thai': '🇹🇭 Muay Thaï',
-      'bjj': '🥋 BJJ',
-      'wrestling': '🤸 Lutte',
-      'other': '🏋️ Autre',
+      'grappling': 'NoGi Grappling',
+      'mma': 'MMA',
+      'wrestling': 'Wrestling',
+      'other': 'Autre',
     };
     return labels[courseType] ?? courseType;
   }

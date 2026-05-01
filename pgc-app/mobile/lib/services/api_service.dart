@@ -24,15 +24,16 @@ class ApiService {
 
   void _checkStatus(http.Response res) {
     if (res.statusCode >= 400) {
-      final body = jsonDecode(res.body);
+      dynamic body;
+      try {
+        body = jsonDecode(res.body);
+      } catch (_) {}
       throw ApiException(
-        body['detail'] ?? 'Erreur serveur',
+        body is Map && body['detail'] != null ? body['detail'].toString() : 'Erreur serveur',
         statusCode: res.statusCode,
       );
     }
   }
-
-  // ── Auth ────────────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     final res = await http.post(
@@ -66,8 +67,6 @@ class ApiService {
     return Member.fromJson(jsonDecode(res.body));
   }
 
-  // ── Membre ──────────────────────────────────────────────────────────────────
-
   Future<Member> getMe() async {
     final res = await http.get(Uri.parse(ApiConfig.me), headers: _headers);
     _checkStatus(res);
@@ -88,7 +87,26 @@ class ApiService {
     return Member.fromJson(jsonDecode(res.body));
   }
 
-  // ── Cours ───────────────────────────────────────────────────────────────────
+  Future<List<Member>> getMembers({int skip = 0, int limit = 100}) async {
+    final uri = Uri.parse(ApiConfig.members).replace(queryParameters: {
+      'skip': '$skip',
+      'limit': '$limit',
+    });
+    final res = await http.get(uri, headers: _headers);
+    _checkStatus(res);
+    final List data = jsonDecode(res.body);
+    return data.map((e) => Member.fromJson(e)).toList();
+  }
+
+  Future<Member> updateMemberRole(int memberId, String role) async {
+    final res = await http.patch(
+      Uri.parse('${ApiConfig.members}/$memberId/role'),
+      headers: _headers,
+      body: jsonEncode({'role': role}),
+    );
+    _checkStatus(res);
+    return Member.fromJson(jsonDecode(res.body));
+  }
 
   Future<List<Course>> getCourses({DateTime? fromDate, DateTime? toDate}) async {
     final params = <String, String>{};
@@ -102,7 +120,38 @@ class ApiService {
     return data.map((e) => Course.fromJson(e)).toList();
   }
 
-  // ── Réservations ────────────────────────────────────────────────────────────
+  Future<Course> createCourse({
+    required String name,
+    String? description,
+    required String courseType,
+    required String level,
+    required DateTime startTime,
+    required DateTime endTime,
+    required int maxCapacity,
+    int? coachId,
+  }) async {
+    final res = await http.post(
+      Uri.parse(ApiConfig.courses),
+      headers: _headers,
+      body: jsonEncode({
+        'name': name,
+        'description': description,
+        'course_type': courseType,
+        'level': level,
+        'start_time': startTime.toIso8601String(),
+        'end_time': endTime.toIso8601String(),
+        'max_capacity': maxCapacity,
+        'coach_id': coachId,
+      }),
+    );
+    _checkStatus(res);
+    return Course.fromJson(jsonDecode(res.body));
+  }
+
+  Future<void> deleteCourse(int courseId) async {
+    final res = await http.delete(Uri.parse('${ApiConfig.courses}/$courseId'), headers: _headers);
+    _checkStatus(res);
+  }
 
   Future<List<Booking>> getMyBookings() async {
     final res = await http.get(Uri.parse(ApiConfig.myBookings), headers: _headers);
