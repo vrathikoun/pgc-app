@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:pgc_app/providers/auth_provider.dart';
+import 'package:pgc_app/theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -86,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     auth.error!,
-                    style: const TextStyle(color: Colors.redAccent),
+                    style: const TextStyle(color: AppColors.green),
                   ),
                 ),
               const SizedBox(height: 32),

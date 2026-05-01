@@ -9,7 +9,7 @@ class AppColors {
   static const Color border = Color(0xFF30323D);
 
   static const Color gold = Color(0xFFD8B56D);
-  static const Color purple = Color(0xFFB02EFF);
+  static const Color darkGreen = Color(0xFF0B5D3B);
   static const Color green = Color(0xFF00D09C);
 
   static const Color text = Color(0xFFF7F4EA);
@@ -23,7 +23,7 @@ class PgcTheme {
       scaffoldBackgroundColor: AppColors.bg,
       colorScheme: const ColorScheme.dark(
         primary: AppColors.gold,
-        secondary: AppColors.purple,
+        secondary: AppColors.darkGreen,
         surface: AppColors.surface,
         error: AppColors.danger,
       ),

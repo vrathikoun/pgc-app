@@ -19,6 +19,20 @@ class SubscriptionStatus(str, enum.Enum):
     suspended = "suspended"
 
 
+class BeltRank(str, enum.Enum):
+    # BJJ / Grappling NoGi
+    white = "white"
+    blue = "blue"
+    purple = "purple"
+    brown = "brown"
+    black = "black"
+    # MMA / Striking
+    beginner = "beginner"
+    intermediate = "intermediate"
+    advanced = "advanced"
+    elite = "elite"
+
+
 class Member(Base):
     __tablename__ = "members"
 
@@ -31,6 +45,9 @@ class Member(Base):
     last_name = Column(String, nullable=False)
     phone = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
+
+    # Niveau
+    belt_rank = Column(String, default="white", nullable=True)
 
     # Rôle & statut
     role = Column(Enum(MemberRole), default=MemberRole.member, nullable=False)
