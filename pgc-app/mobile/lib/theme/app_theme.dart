@@ -15,6 +15,38 @@ class AppColors {
   static const Color text = Color(0xFFF7F4EA);
   static const Color muted = Color(0xFF8D92A0);
   static const Color danger = Color(0xFFFF5A5F);
+
+  // ── Couleurs par type de cours ─────────────────────────────────────────────
+  // Ajouter un nouveau type ici suffit — tout le reste s'adapte automatiquement
+  static const Map<String, Color> courseColors = {
+    'grappling':  Color(0xFF1A6B4A),  // vert forêt
+    'bjj':        Color(0xFF1A4A6B),  // bleu acier
+    'wrestling':  Color(0xFF6B3A1A),  // orange brûlé
+    'mma':        Color(0xFF6B1A1A),  // rouge sang
+    'boxing':     Color(0xFF4A1A6B),  // violet
+    'kickboxing': Color(0xFF6B5A1A),  // or foncé
+    'muay_thai':  Color(0xFF1A5A6B),  // bleu-vert
+    'other':      Color(0xFF2A2A3A),  // gris neutre
+  };
+
+  static Color forCourseType(String type) =>
+      courseColors[type] ?? courseColors['other']!;
+
+  // ── Couleurs de ceinture BJJ ───────────────────────────────────────────────
+  static const Map<String, Color> beltColors = {
+    'white':        Color(0xFFEEEEEE),
+    'blue':         Color(0xFF1565C0),
+    'purple':       Color(0xFF7B1FA2),
+    'brown':        Color(0xFF5D4037),
+    'black':        Color(0xFF212121),
+    'beginner':     Color(0xFF9E9E9E),
+    'intermediate': Color(0xFF1976D2),
+    'advanced':     Color(0xFFD32F2F),
+    'elite':        Color(0xFFFFD700),
+  };
+
+  static Color forBelt(String? belt) =>
+      beltColors[belt] ?? beltColors['white']!;
 }
 
 class PgcTheme {

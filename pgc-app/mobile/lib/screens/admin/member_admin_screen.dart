@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:pgc_app/models/member.dart';
 import 'package:pgc_app/providers/auth_provider.dart';
@@ -74,7 +75,9 @@ class _MemberAdminScreenState extends State<MemberAdminScreen> {
             if (_error != null) Text(_error!, style: const TextStyle(color: AppColors.danger)),
             if (!_loading)
               ..._members.map(
-                (m) => Container(
+                (m) => GestureDetector(
+                  onTap: () => context.go('/admin/members/${m.id}'),
+                  child: Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -99,25 +102,47 @@ class _MemberAdminScreenState extends State<MemberAdminScreen> {
                           ],
                         ),
                       ),
-                      DropdownButton<String>(
-                        value: m.role,
-                        dropdownColor: AppColors.surface2,
-                        underline: const SizedBox.shrink(),
-                        items: const [
-                          DropdownMenuItem(value: 'member', child: Text('Member')),
-                          DropdownMenuItem(value: 'coach', child: Text('Coach')),
-                          DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                      Row(
+                        children: [
+                          _RoleBadge(role: m.role),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.chevron_right, color: AppColors.muted, size: 18),
                         ],
-                        onChanged: (value) {
-                          if (value != null && value != m.role) _changeRole(m, value);
-                        },
                       ),
                     ],
                   ),
                 ),
+                ),
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RoleBadge extends StatelessWidget {
+  final String role;
+  const _RoleBadge({required this.role});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = {
+      "admin": AppColors.gold,
+      "coach": AppColors.green,
+      "member": AppColors.muted,
+    };
+    final color = colors[role] ?? AppColors.muted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Text(
+        role,
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
       ),
     );
   }

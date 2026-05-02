@@ -7,6 +7,7 @@ class ApiConfig {
   static const String login = '$baseUrl/auth/login';
   static const String register = '$baseUrl/auth/register';
   static const String me = '$baseUrl/members/me';
+  static const String coaches = '$baseUrl/members/coaches';
   static const String members = '$baseUrl/members';
   static const String courses = '$baseUrl/courses';
   static const String bookings = '$baseUrl/bookings';

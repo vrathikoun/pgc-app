@@ -8,11 +8,13 @@ import 'package:pgc_app/screens/auth/login_screen.dart';
 import 'package:pgc_app/screens/auth/register_screen.dart';
 import 'package:pgc_app/screens/courses/course_list_screen.dart';
 import 'package:pgc_app/screens/courses/course_detail_screen.dart';
+import 'package:pgc_app/screens/courses/schedule_screen.dart';
 import 'package:pgc_app/screens/bookings/my_bookings_screen.dart';
 import 'package:pgc_app/screens/profile/profile_screen.dart';
 import 'package:pgc_app/screens/admin/admin_dashboard_screen.dart';
 import 'package:pgc_app/screens/admin/course_form_screen.dart';
 import 'package:pgc_app/screens/admin/member_admin_screen.dart';
+import 'package:pgc_app/screens/admin/member_profile_admin_screen.dart';
 import 'package:pgc_app/screens/admin/schedule_admin_screen.dart';
 import 'package:pgc_app/theme/app_theme.dart';
 
@@ -58,6 +60,7 @@ class PgcApp extends StatelessWidget {
           builder: (context, state, child) => MainShell(child: child),
           routes: [
             GoRoute(path: '/courses', builder: (_, __) => const CourseListScreen()),
+            GoRoute(path: '/schedule', builder: (_, __) => const ScheduleScreen()),
             GoRoute(
               path: '/courses/:id',
               builder: (_, state) => CourseDetailScreen(
@@ -70,6 +73,12 @@ class PgcApp extends StatelessWidget {
             GoRoute(path: '/admin/courses/new', builder: (_, __) => const CourseFormScreen()),
             GoRoute(path: '/admin/schedule', builder: (_, __) => const ScheduleAdminScreen()),
             GoRoute(path: '/admin/members', builder: (_, __) => const MemberAdminScreen()),
+            GoRoute(
+              path: '/admin/members/:id',
+              builder: (_, state) => MemberProfileAdminScreen(
+                memberId: int.parse(state.pathParameters['id']!),
+              ),
+            ),
           ],
         ),
       ],
@@ -93,9 +102,10 @@ class MainShell extends StatelessWidget {
     final location = GoRouterState.of(context).matchedLocation;
 
     if (location.startsWith('/courses')) return 0;
-    if (location.startsWith('/bookings')) return 1;
-    if (location.startsWith('/profile')) return 2;
-    if (isAdmin && location.startsWith('/admin')) return 3;
+    if (location.startsWith('/schedule')) return 1;
+    if (location.startsWith('/bookings')) return 2;
+    if (location.startsWith('/profile')) return 3;
+    if (isAdmin && location.startsWith('/admin')) return 4;
 
     return 0;
   }
@@ -107,6 +117,7 @@ class MainShell extends StatelessWidget {
 
     final items = <_NavItem>[
       _NavItem(Icons.calendar_today, 'Planning', '/courses'),
+      _NavItem(Icons.grid_view, 'Semaine', '/schedule'),
       _NavItem(Icons.bookmark, 'Mes cours', '/bookings'),
       _NavItem(Icons.person, 'Profil', '/profile'),
       if (isAdmin) _NavItem(Icons.admin_panel_settings, 'Admin', '/admin'),

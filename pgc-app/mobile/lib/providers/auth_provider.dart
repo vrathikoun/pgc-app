@@ -87,4 +87,10 @@ class AuthProvider extends ChangeNotifier {
     await _storage.delete(key: _tokenKey);
     notifyListeners();
   }
+
+  /// Met à jour le membre en mémoire (après upload avatar, update profil, etc.)
+  Future<void> refreshMember(Member updated) async {
+    _member = updated;
+    notifyListeners();
+  }
 }

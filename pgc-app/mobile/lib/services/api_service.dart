@@ -17,6 +17,9 @@ class ApiService {
   final String? token;
   ApiService({this.token});
 
+  /// Exposé pour construire les URLs des fichiers statiques (avatars)
+  String get baseUrl => ApiConfig.baseUrl;
+
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -73,7 +76,7 @@ class ApiService {
     return Member.fromJson(jsonDecode(res.body));
   }
 
-  Future<Member> updateMe({String? firstName, String? lastName, String? phone}) async {
+  Future<Member> updateMe({String? firstName, String? lastName, String? phone, String? beltRank}) async {
     final res = await http.put(
       Uri.parse(ApiConfig.me),
       headers: _headers,
@@ -81,10 +84,40 @@ class ApiService {
         if (firstName != null) 'first_name': firstName,
         if (lastName != null) 'last_name': lastName,
         if (phone != null) 'phone': phone,
+        if (beltRank != null) 'belt_rank': beltRank,
       }),
     );
     _checkStatus(res);
     return Member.fromJson(jsonDecode(res.body));
+  }
+
+  /// Upload avatar en base64 pour le membre connecté
+  Future<Member> uploadMyAvatar(String base64Image) async {
+    final res = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/members/me/avatar'),
+      headers: _headers,
+      body: jsonEncode({'image_b64': base64Image}),
+    );
+    _checkStatus(res);
+    return Member.fromJson(jsonDecode(res.body));
+  }
+
+  /// Upload avatar en base64 pour un membre (admin seulement)
+  Future<Member> uploadMemberAvatar(int memberId, String base64Image) async {
+    final res = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/members/$memberId/avatar'),
+      headers: _headers,
+      body: jsonEncode({'image_b64': base64Image}),
+    );
+    _checkStatus(res);
+    return Member.fromJson(jsonDecode(res.body));
+  }
+
+  Future<List<Member>> getCoaches() async {
+    final res = await http.get(Uri.parse(ApiConfig.coaches), headers: _headers);
+    _checkStatus(res);
+    final List data = jsonDecode(res.body);
+    return data.map((e) => Member.fromJson(e)).toList();
   }
 
   Future<List<Member>> getMembers({int skip = 0, int limit = 100}) async {
@@ -103,6 +136,28 @@ class ApiService {
       Uri.parse('${ApiConfig.members}/$memberId/role'),
       headers: _headers,
       body: jsonEncode({'role': role}),
+    );
+    _checkStatus(res);
+    return Member.fromJson(jsonDecode(res.body));
+  }
+
+  /// Admin : modifier le profil complet d'un membre
+  Future<Member> updateMember(
+    int memberId, {
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? beltRank,
+  }) async {
+    final res = await http.put(
+      Uri.parse('${ApiConfig.members}/$memberId'),
+      headers: _headers,
+      body: jsonEncode({
+        if (firstName != null) 'first_name': firstName,
+        if (lastName != null) 'last_name': lastName,
+        if (phone != null) 'phone': phone,
+        if (beltRank != null) 'belt_rank': beltRank,
+      }),
     );
     _checkStatus(res);
     return Member.fromJson(jsonDecode(res.body));

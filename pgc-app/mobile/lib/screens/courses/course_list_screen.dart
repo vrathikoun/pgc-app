@@ -50,15 +50,7 @@ class _CourseListScreenState extends State<CourseListScreen> {
         toDate: _today.add(const Duration(days: 7)),
       );
 
-      final members = await api.getMembers();
-
-      final coaches = members
-          .where((m) => m.role == 'coach' || m.role == 'admin')
-          .toList();
-
-      for (final coach in coaches) {
-        debugPrint('COACH ${coach.firstName} avatar=${coach.avatarUrl}');
-      }
+      final coaches = await api.getCoaches();
 
       setState(() {
         _courses = courses;

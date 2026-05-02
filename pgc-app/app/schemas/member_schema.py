@@ -27,7 +27,12 @@ class MemberUpdate(BaseModel):
     last_name: Optional[str] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
-    belt_rank: Optional[BeltRank] = None
+    belt_rank: Optional[str] = None
+
+
+class AvatarUpdate(BaseModel):
+    """Image encodée en base64 — format: data:image/jpeg;base64,/9j/..."""
+    image_b64: str
 
 
 class MemberAdminRoleUpdate(BaseModel):
