@@ -181,11 +181,7 @@ class _BeltBadge extends StatelessWidget {
     'blue': 'Ceinture Bleue',
     'purple': 'Ceinture Violette',
     'brown': 'Ceinture Marron',
-    'black': 'Ceinture Noire',
-    'beginner': 'Débutant',
-    'intermediate': 'Intermédiaire',
-    'advanced': 'Avancé',
-    'elite': 'Élite',
+    'black': 'Ceinture Noire'
   };
 
   @override

@@ -39,10 +39,6 @@ class AppColors {
     'purple':       Color(0xFF7B1FA2),
     'brown':        Color(0xFF5D4037),
     'black':        Color(0xFF212121),
-    'beginner':     Color(0xFF9E9E9E),
-    'intermediate': Color(0xFF1976D2),
-    'advanced':     Color(0xFFD32F2F),
-    'elite':        Color(0xFFFFD700),
   };
 
   static Color forBelt(String? belt) =>
