@@ -56,6 +56,10 @@ class _CourseListScreenState extends State<CourseListScreen> {
           .where((m) => m.role == 'coach' || m.role == 'admin')
           .toList();
 
+      for (final coach in coaches) {
+        debugPrint('COACH ${coach.firstName} avatar=${coach.avatarUrl}');
+      }
+
       setState(() {
         _courses = courses;
         _coaches = coaches;
@@ -72,11 +76,11 @@ class _CourseListScreenState extends State<CourseListScreen> {
   List<Course> get _selectedCourses {
     final day = _days[_selectedDayIndex];
 
-    return _courses.where((c) {
-      final d = c.startTime;
-      return d.year == day.year &&
-          d.month == day.month &&
-          d.day == day.day;
+    return _courses.where((course) {
+      final date = course.startTime;
+      return date.year == day.year &&
+          date.month == day.month &&
+          date.day == day.day;
     }).toList();
   }
 
@@ -94,7 +98,6 @@ class _CourseListScreenState extends State<CourseListScreen> {
             children: [
               _TopBar(onRefresh: _loadData),
               const SizedBox(height: 28),
-
               const Text(
                 'Polo Grappling Club',
                 style: TextStyle(
@@ -103,24 +106,19 @@ class _CourseListScreenState extends State<CourseListScreen> {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-
               const SizedBox(height: 24),
               const _SectionTitle('Coachs du moment'),
               const SizedBox(height: 12),
               _CoachStrip(coaches: _coaches),
-
               const SizedBox(height: 28),
               const _SectionTitle('Planning 7 jours'),
               const SizedBox(height: 12),
-
               _DaySelector(
                 days: _days,
                 selectedIndex: _selectedDayIndex,
                 onSelected: (i) => setState(() => _selectedDayIndex = i),
               ),
-
               const SizedBox(height: 20),
-
               if (_loading)
                 const Center(
                   child: Padding(
@@ -159,14 +157,27 @@ class _TopBar extends StatelessWidget {
             width: 42,
             height: 42,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const CircleAvatar(
-              backgroundColor: AppColors.surface,
-              child: Text('PGC'),
+            errorBuilder: (_, __, ___) => Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text(
+                  'PGC',
+                  style: TextStyle(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
         const SizedBox(width: 10),
-
         const Text(
           'PGC',
           style: TextStyle(
@@ -175,9 +186,7 @@ class _TopBar extends StatelessWidget {
             fontSize: 18,
           ),
         ),
-
         const Spacer(),
-
         GestureDetector(
           onTap: onRefresh,
           child: Container(
@@ -201,38 +210,80 @@ class _CoachStrip extends StatelessWidget {
   const _CoachStrip({required this.coaches});
 
   ImageProvider _avatar(String? url) {
-    if (url == null || url.isEmpty) {
+    final cleanUrl = url?.trim();
+
+    if (cleanUrl == null || cleanUrl.isEmpty) {
       return const AssetImage('assets/images/default_avatar.png');
     }
 
-    if (url.startsWith('http')) return NetworkImage(url);
+    if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+      return NetworkImage(cleanUrl);
+    }
 
-    return AssetImage(url);
+    return AssetImage(cleanUrl);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (coaches.isEmpty) {
+      return const SizedBox(
+        height: 100,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Aucun coach configuré',
+            style: TextStyle(color: AppColors.muted),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
-      height: 100,
+      height: 106,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: coaches.length,
         separatorBuilder: (_, __) => const SizedBox(width: 16),
         itemBuilder: (_, i) {
-          final c = coaches[i];
+          final coach = coaches[i];
 
-          return Column(
-            children: [
-              CircleAvatar(
-                radius: 34,
-                backgroundImage: _avatar(c.avatarUrl),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                c.firstName,
-                style: const TextStyle(color: AppColors.text),
-              ),
-            ],
+          return SizedBox(
+            width: 84,
+            child: Column(
+              children: [
+                ClipOval(
+                  child: Image(
+                    image: _avatar(coach.avatarUrl),
+                    width: 68,
+                    height: 68,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, error, __) {
+                      debugPrint(
+                        'AVATAR ERROR ${coach.firstName}: ${coach.avatarUrl} / $error',
+                      );
+
+                      return Image.asset(
+                        'assets/images/default_avatar.png',
+                        width: 68,
+                        height: 68,
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  coach.firstName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -260,7 +311,7 @@ class _DaySelector extends StatelessWidget {
         itemCount: days.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (_, i) {
-          final d = days[i];
+          final day = days[i];
           final selected = i == selectedIndex;
 
           return GestureDetector(
@@ -275,15 +326,13 @@ class _DaySelector extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    DateFormat('E', 'fr_FR')
-                        .format(d)
-                        .replaceAll('.', ''),
+                    DateFormat('E', 'fr_FR').format(day).replaceAll('.', ''),
                     style: TextStyle(
                       color: selected ? Colors.black : AppColors.muted,
                     ),
                   ),
                   Text(
-                    DateFormat('d').format(d),
+                    DateFormat('d').format(day),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -309,36 +358,46 @@ class _CourseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final time = DateFormat('HH:mm').format(course.startTime);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF0B5D3B),
-            Color(0xFF042D1F),
-          ],
-        ),
-      ),
-      child: Row(
-        children: [
-          Text(
-            time,
-            style: const TextStyle(color: AppColors.text),
+    return GestureDetector(
+      onTap: () => context.go('/courses/${course.id}'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [
+              Color(0xFF0B5D3B),
+              Color(0xFF042D1F),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              course.name,
+        ),
+        child: Row(
+          children: [
+            Text(
+              time,
               style: const TextStyle(
                 color: AppColors.text,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                course.name,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right,
+              color: AppColors.text,
+            ),
+          ],
+        ),
       ),
     );
   }
