@@ -1,0 +1,15 @@
+# docker-compose.yml — à mettre à la racine du projet
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: pgc_app
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
