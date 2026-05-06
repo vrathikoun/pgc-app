@@ -26,11 +26,7 @@ class BeltRank(str, enum.Enum):
     purple = "purple"
     brown = "brown"
     black = "black"
-    # MMA / Striking
-    beginner = "beginner"
-    intermediate = "intermediate"
-    advanced = "advanced"
-    elite = "elite"
+
 
 
 class Member(Base):

@@ -34,13 +34,10 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
   static const _roles = ['member', 'coach', 'admin'];
   static const _belts = [
     'white', 'blue', 'purple', 'brown', 'black',
-    'beginner', 'intermediate', 'advanced', 'elite',
   ];
   static const _beltLabels = {
     'white': 'Blanche', 'blue': 'Bleue', 'purple': 'Violette',
     'brown': 'Marron', 'black': 'Noire',
-    'beginner': 'Débutant', 'intermediate': 'Intermédiaire',
-    'advanced': 'Avancé', 'elite': 'Élite',
   };
 
   @override

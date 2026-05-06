@@ -150,7 +150,6 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
                       DropdownButtonFormField<String>(value: _courseType, dropdownColor: AppColors.surface2, decoration: const InputDecoration(labelText: 'Type'), items: const [
                         DropdownMenuItem(value: 'grappling', child: Text('NoGi Grappling')),
                         DropdownMenuItem(value: 'wrestling', child: Text('Wrestling')),
-                        DropdownMenuItem(value: 'mma', child: Text('MMA')),
                         DropdownMenuItem(value: 'other', child: Text('Autre')),
                       ], onChanged: (v) => setState(() => _courseType = v!)),
                       const SizedBox(height: 14),
@@ -205,6 +204,7 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
                           DropdownMenuItem(value: 8, child: Text('8 semaines')),
                           DropdownMenuItem(value: 12, child: Text('12 semaines')),
                           DropdownMenuItem(value: 16, child: Text('16 semaines')),
+                          DropdownMenuItem(value: 16, child: Text('52 semaines')),
                         ], onChanged: (v) => setState(() => _recurrenceWeeks = v!)),
                       ],
                       if (_error != null) ...[const SizedBox(height: 16), Text(_error!, style: const TextStyle(color: AppColors.danger))],

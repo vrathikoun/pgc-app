@@ -29,6 +29,8 @@ class _ScheduleAdminScreenState extends State<ScheduleAdminScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
+
     setState(() {
       _loading = true;
       _error = null;
@@ -36,40 +38,60 @@ class _ScheduleAdminScreenState extends State<ScheduleAdminScreen> {
 
     try {
       final now = DateTime.now().subtract(const Duration(days: 1));
+
       final data = await context.read<AuthProvider>().api.getCourses(
             fromDate: now,
-            toDate: now.add(const Duration(days: 45)),
+            toDate: now.add(const Duration(days: 365)),
           );
-      setState(() => _courses = data);
+
+      if (!mounted) return;
+
+      setState(() {
+        _courses = data;
+        _loading = false;
+      });
     } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
   Future<void> _delete(Course course) async {
-    final ok = await showDialog<bool>(
+    final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Supprimer le cours ?'),
-        content: Text(
-          'Cette action supprimera aussi les réservations associées à :\n\n${course.name}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text(
+            'Supprimer le cours ?',
+            style: TextStyle(color: AppColors.text),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer'),
+          content: Text(
+            'Cette action supprimera aussi les réservations associées à :\n\n${course.name}',
+            style: const TextStyle(color: AppColors.muted),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text(
+                'Supprimer',
+                style: TextStyle(color: AppColors.danger),
+              ),
+            ),
+          ],
+        );
+      },
     );
 
-    if (ok != true) return;
+    if (confirm != true) return;
 
     setState(() {
       _deletingId = course.id;
@@ -78,25 +100,33 @@ class _ScheduleAdminScreenState extends State<ScheduleAdminScreen> {
 
     try {
       await context.read<AuthProvider>().api.deleteCourse(course.id);
-      setState(() {
-        _courses.removeWhere((c) => c.id == course.id);
-      });
 
       if (!mounted) return;
+
+      setState(() {
+        _courses.removeWhere((c) => c.id == course.id);
+        _deletingId = null;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cours supprimé')),
       );
+
+      await _load();
     } catch (e) {
-      setState(() => _error = e.toString());
       if (!mounted) return;
+
+      setState(() {
+        _deletingId = null;
+        _error = e.toString();
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Suppression impossible : $e'),
           backgroundColor: AppColors.danger,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _deletingId = null);
     }
   }
 
@@ -107,6 +137,9 @@ class _ScheduleAdminScreenState extends State<ScheduleAdminScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
+      appBar: AppBar(
+        title: const Text('Planning admin'),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.gold,
         foregroundColor: AppColors.bg,
@@ -114,7 +147,6 @@ class _ScheduleAdminScreenState extends State<ScheduleAdminScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Cours'),
       ),
-      appBar: AppBar(title: const Text('Planning admin')),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(
@@ -126,116 +158,152 @@ class _ScheduleAdminScreenState extends State<ScheduleAdminScreen> {
               subtitle: 'Modifier ou supprimer les cours créés.',
             ),
             const SizedBox(height: 20),
+
             if (_loading)
-              const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(color: AppColors.gold),
+                ),
+              ),
+
             if (_error != null) ...[
-              Text(_error!, style: const TextStyle(color: AppColors.danger)),
+              Text(
+                _error!,
+                style: const TextStyle(color: AppColors.danger),
+              ),
               const SizedBox(height: 12),
             ],
+
             if (!_loading && _courses.isEmpty)
-              const Text('Aucun cours.', style: TextStyle(color: AppColors.muted)),
+              const Text(
+                'Aucun cours.',
+                style: TextStyle(color: AppColors.muted),
+              ),
+
             if (!_loading)
               ..._courses.map(
-                (course) => Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: AppColors.gold.withOpacity(.12)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 68,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.green,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              DateFormat('d').format(course.startTime),
-                              style: const TextStyle(
-                                color: AppColors.gold,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                              DateFormat('MMM', 'fr_FR')
-                                  .format(course.startTime)
-                                  .toUpperCase(),
-                              style: const TextStyle(
-                                color: AppColors.text,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
+                (course) {
+                  final isDeleting = _deletingId == course.id;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: AppColors.gold.withOpacity(.12),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              course.name,
-                              style: const TextStyle(
-                                color: AppColors.text,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${df.format(course.startTime)} · ${tf.format(course.startTime)}-${tf.format(course.endTime)}',
-                              style: const TextStyle(color: AppColors.muted),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                PgcAvatar(
-                                  avatarUrl: course.effectiveCoachAvatarUrl,
-                                  initials: course.coachInitials,
-                                  radius: 13,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 68,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.green,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                DateFormat('d').format(course.startTime),
+                                style: const TextStyle(
+                                  color: AppColors.gold,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    '${course.coachFullName} · ${course.levelLabel} · ${course.spotsAvailable ?? course.maxCapacity}/${course.maxCapacity} places',
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: AppColors.muted,
-                                      fontSize: 12,
+                              ),
+                              Text(
+                                DateFormat('MMM', 'fr_FR')
+                                    .format(course.startTime)
+                                    .toUpperCase(),
+                                style: const TextStyle(
+                                  color: AppColors.text,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                course.name,
+                                style: const TextStyle(
+                                  color: AppColors.text,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${df.format(course.startTime)} · ${tf.format(course.startTime)}-${tf.format(course.endTime)}',
+                                style: const TextStyle(color: AppColors.muted),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  PgcAvatar(
+                                    avatarUrl: course.effectiveCoachAvatarUrl,
+                                    initials: course.coachInitials,
+                                    radius: 13,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      '${course.coachFullName} · ${course.levelLabel} · ${course.spotsAvailable ?? course.maxCapacity}/${course.maxCapacity} places',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: AppColors.muted,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        tooltip: 'Modifier',
-                        icon: const Icon(Icons.edit_outlined, color: AppColors.gold),
-                        onPressed: () => context.go('/admin/courses/${course.id}/edit'),
-                      ),
-                      IconButton(
-                        tooltip: 'Supprimer',
-                        icon: _deletingId == course.id
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.delete_outline, color: AppColors.danger),
-                        onPressed: _deletingId == null ? () => _delete(course) : null,
-                      ),
-                    ],
-                  ),
-                ),
+                        IconButton(
+                          tooltip: 'Modifier',
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            color: AppColors.gold,
+                          ),
+                          onPressed: isDeleting
+                              ? null
+                              : () => context.go(
+                                    '/admin/courses/${course.id}/edit',
+                                  ),
+                        ),
+                        IconButton(
+                          tooltip: 'Supprimer',
+                          icon: isDeleting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.danger,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.delete_outline,
+                                  color: AppColors.danger,
+                                ),
+                          onPressed: _deletingId == null
+                              ? () => _delete(course)
+                              : null,
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
           ],
         ),

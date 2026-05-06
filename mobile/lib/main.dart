@@ -55,31 +55,69 @@ class PgcApp extends StatelessWidget {
         return null;
       },
       routes: [
-        GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-        GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+        GoRoute(
+          path: '/login',
+          builder: (_, __) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/register',
+          builder: (_, __) => const RegisterScreen(),
+        ),
         ShellRoute(
           builder: (context, state, child) => MainShell(child: child),
           routes: [
-            GoRoute(path: '/courses', builder: (_, __) => const CourseListScreen()),
-            GoRoute(path: '/schedule', builder: (_, __) => const ScheduleScreen()),
+            GoRoute(
+              path: '/courses',
+              builder: (_, __) => const CourseListScreen(),
+            ),
+            GoRoute(
+              path: '/schedule',
+              builder: (_, __) => const ScheduleScreen(),
+            ),
             GoRoute(
               path: '/courses/:id',
               builder: (_, state) => CourseDetailScreen(
                 courseId: int.parse(state.pathParameters['id']!),
               ),
             ),
-            GoRoute(path: '/bookings', builder: (_, __) => const MyBookingsScreen()),
-            GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+            GoRoute(
+              path: '/bookings',
+              builder: (_, __) => const MyBookingsScreen(),
+            ),
+            GoRoute(
+              path: '/profile',
+              builder: (_, __) => const ProfileScreen(),
+            ),
             GoRoute(
               path: '/coaches/:id',
               builder: (_, state) => CoachProfileScreen(
                 coachId: int.parse(state.pathParameters['id']!),
               ),
             ),
-            GoRoute(path: '/admin', builder: (_, __) => const AdminDashboardScreen()),
-            GoRoute(path: '/admin/courses/new', builder: (_, __) => const CourseFormScreen()),
-            GoRoute(path: '/admin/schedule', builder: (_, __) => const ScheduleAdminScreen()),
-            GoRoute(path: '/admin/members', builder: (_, __) => const MemberAdminScreen()),
+
+            // ADMIN
+            GoRoute(
+              path: '/admin',
+              builder: (_, __) => const AdminDashboardScreen(),
+            ),
+            GoRoute(
+              path: '/admin/courses/new',
+              builder: (_, __) => const CourseFormScreen(),
+            ),
+            GoRoute(
+              path: '/admin/courses/:id/edit',
+              builder: (_, state) => CourseFormScreen(
+                courseId: int.parse(state.pathParameters['id']!),
+              ),
+            ),
+            GoRoute(
+              path: '/admin/schedule',
+              builder: (_, __) => const ScheduleAdminScreen(),
+            ),
+            GoRoute(
+              path: '/admin/members',
+              builder: (_, __) => const MemberAdminScreen(),
+            ),
             GoRoute(
               path: '/admin/members/:id',
               builder: (_, state) => MemberProfileAdminScreen(
@@ -92,7 +130,7 @@ class PgcApp extends StatelessWidget {
     );
 
     return MaterialApp.router(
-      title: 'PGC App',
+      title: 'Polo Grappling Club',
       debugShowCheckedModeBanner: false,
       theme: PgcTheme.dark(),
       routerConfig: router,
@@ -130,41 +168,23 @@ class MainShell extends StatelessWidget {
       if (isAdmin) _NavItem(Icons.admin_panel_settings, 'Admin', '/admin'),
     ];
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surface.withOpacity(0.96),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(items.length, (i) {
-            final selected = i == index;
-            final item = items[i];
-
-            return GestureDetector(
-              onTap: () => context.go(item.route),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: selected ? AppColors.surface2 : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  item.icon,
-                  color: selected ? AppColors.gold : AppColors.muted,
-                ),
-              ),
-            );
-          }),
-        ),
+  return Scaffold(
+    body: SafeArea(
+      child: _pages[_selectedIndex],
+    ),
+    bottomNavigationBar: SafeArea(
+      child: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
+        ],
       ),
-    );
+    ),
+  );
   }
 }
 

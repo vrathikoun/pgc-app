@@ -150,10 +150,6 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
       'purple': 'Ceinture violette',
       'brown': 'Ceinture marron',
       'black': 'Ceinture noire',
-      'beginner': 'Beginner',
-      'intermediate': 'Intermediate',
-      'advanced': 'Advanced',
-      'elite': 'Elite',
     };
     return labels[belt] ?? belt;
   }

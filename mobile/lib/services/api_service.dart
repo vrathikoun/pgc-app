@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
 import 'package:pgc_app/config/api_config.dart';
 import 'package:pgc_app/models/booking.dart';
 import 'package:pgc_app/models/course.dart';
@@ -28,9 +29,26 @@ class ApiService {
         if (token != null) 'Authorization': 'Bearer $token',
       };
 
+  String _joinUrl(String base, String path) {
+    final b = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final p = path.startsWith('/') ? path.substring(1) : path;
+    return '$b/$p';
+  }
+
+  dynamic _parseBody(http.Response res) {
+    if (res.body.isEmpty) return null;
+
+    try {
+      return jsonDecode(res.body);
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _checkStatus(http.Response res) {
     if (res.statusCode >= 400) {
       dynamic body;
+
       try {
         body = jsonDecode(res.body);
       } catch (_) {}
@@ -38,7 +56,7 @@ class ApiService {
       throw ApiException(
         body is Map && body['detail'] != null
             ? body['detail'].toString()
-            : 'Erreur serveur',
+            : 'Erreur serveur (${res.statusCode})',
         statusCode: res.statusCode,
       );
     }
@@ -48,10 +66,20 @@ class ApiService {
     final res = await http.post(
       Uri.parse(ApiConfig.login),
       headers: _headers,
-      body: jsonEncode({'email': email, 'password': password}),
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+      }),
     );
+
     _checkStatus(res);
-    return jsonDecode(res.body);
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Réponse serveur vide lors de la connexion');
+    }
+
+    return data;
   }
 
   Future<Member> register({
@@ -72,14 +100,31 @@ class ApiService {
         if (phone != null) 'phone': phone,
       }),
     );
+
     _checkStatus(res);
-    return Member.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Réponse serveur vide lors de l’inscription');
+    }
+
+    return Member.fromJson(data);
   }
 
   Future<Member> getMe() async {
-    final res = await http.get(Uri.parse(ApiConfig.me), headers: _headers);
+    final res = await http.get(
+      Uri.parse(ApiConfig.me),
+      headers: _headers,
+    );
+
     _checkStatus(res);
-    return Member.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Réponse serveur vide pour le profil');
+    }
+
+    return Member.fromJson(data);
   }
 
   Future<Member> updateMe({
@@ -97,68 +142,118 @@ class ApiService {
         if (lastName != null) 'last_name': lastName,
         if (phone != null) 'phone': phone,
         if (beltRank != null) 'belt_rank': beltRank,
-        if (weeklyBookingLimit != null) 'weekly_booking_limit': weeklyBookingLimit,
+        if (weeklyBookingLimit != null)
+          'weekly_booking_limit': weeklyBookingLimit,
       }),
     );
+
     _checkStatus(res);
-    return Member.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Réponse serveur vide lors de la mise à jour du profil');
+    }
+
+    return Member.fromJson(data);
   }
 
   Future<Member> uploadMyAvatar(String base64Image) async {
     final res = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/members/me/avatar'),
+      Uri.parse(_joinUrl(ApiConfig.baseUrl, '/members/me/avatar')),
       headers: _headers,
       body: jsonEncode({'image_b64': base64Image}),
     );
+
     _checkStatus(res);
-    return Member.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Réponse serveur vide lors de l’upload avatar');
+    }
+
+    return Member.fromJson(data);
   }
 
   Future<Member> uploadMemberAvatar(int memberId, String base64Image) async {
     final res = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/members/$memberId/avatar'),
+      Uri.parse(_joinUrl(ApiConfig.baseUrl, '/members/$memberId/avatar')),
       headers: _headers,
       body: jsonEncode({'image_b64': base64Image}),
     );
+
     _checkStatus(res);
-    return Member.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Réponse serveur vide lors de l’upload avatar');
+    }
+
+    return Member.fromJson(data);
   }
 
   Future<List<Member>> getCoaches() async {
-    final res = await http.get(Uri.parse(ApiConfig.coaches), headers: _headers);
+    final res = await http.get(
+      Uri.parse(ApiConfig.coaches),
+      headers: _headers,
+    );
+
     _checkStatus(res);
-    final List data = jsonDecode(res.body);
+
+    final data = _parseBody(res);
+    if (data is! List) return [];
+
     return data.map((e) => Member.fromJson(e)).toList();
   }
 
   Future<Member> getCoach(int coachId) async {
     final res = await http.get(
-      Uri.parse('${ApiConfig.coaches}/$coachId'),
+      Uri.parse(_joinUrl(ApiConfig.coaches, '$coachId')),
       headers: _headers,
     );
+
     _checkStatus(res);
-    return Member.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Coach introuvable');
+    }
+
+    return Member.fromJson(data);
   }
 
   Future<List<Member>> getMembers({int skip = 0, int limit = 100}) async {
-    final uri = Uri.parse(ApiConfig.members).replace(queryParameters: {
-      'skip': '$skip',
-      'limit': '$limit',
-    });
+    final uri = Uri.parse(ApiConfig.members).replace(
+      queryParameters: {
+        'skip': '$skip',
+        'limit': '$limit',
+      },
+    );
+
     final res = await http.get(uri, headers: _headers);
+
     _checkStatus(res);
-    final List data = jsonDecode(res.body);
+
+    final data = _parseBody(res);
+    if (data is! List) return [];
+
     return data.map((e) => Member.fromJson(e)).toList();
   }
 
   Future<Member> updateMemberRole(int memberId, String role) async {
     final res = await http.patch(
-      Uri.parse('${ApiConfig.members}/$memberId/role'),
+      Uri.parse(_joinUrl(ApiConfig.members, '$memberId/role')),
       headers: _headers,
       body: jsonEncode({'role': role}),
     );
+
     _checkStatus(res);
-    return Member.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Réponse serveur vide lors du changement de rôle');
+    }
+
+    return Member.fromJson(data);
   }
 
   Future<Member> updateMember(
@@ -170,18 +265,26 @@ class ApiService {
     int? weeklyBookingLimit,
   }) async {
     final res = await http.put(
-      Uri.parse('${ApiConfig.members}/$memberId'),
+      Uri.parse(_joinUrl(ApiConfig.members, '$memberId')),
       headers: _headers,
       body: jsonEncode({
         if (firstName != null) 'first_name': firstName,
         if (lastName != null) 'last_name': lastName,
         if (phone != null) 'phone': phone,
         if (beltRank != null) 'belt_rank': beltRank,
-        if (weeklyBookingLimit != null) 'weekly_booking_limit': weeklyBookingLimit,
+        if (weeklyBookingLimit != null)
+          'weekly_booking_limit': weeklyBookingLimit,
       }),
     );
+
     _checkStatus(res);
-    return Member.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Réponse serveur vide lors de la mise à jour membre');
+    }
+
+    return Member.fromJson(data);
   }
 
   Future<List<Course>> getCourses({
@@ -190,24 +293,44 @@ class ApiService {
     int? coachId,
   }) async {
     final params = <String, String>{};
-    if (fromDate != null) params['from_date'] = LocalDateTime.toApiString(fromDate);
-    if (toDate != null) params['to_date'] = LocalDateTime.toApiString(toDate);
-    if (coachId != null) params['coach_id'] = '$coachId';
+
+    if (fromDate != null) {
+      params['from_date'] = LocalDateTime.toApiString(fromDate);
+    }
+
+    if (toDate != null) {
+      params['to_date'] = LocalDateTime.toApiString(toDate);
+    }
+
+    if (coachId != null) {
+      params['coach_id'] = '$coachId';
+    }
 
     final uri = Uri.parse(ApiConfig.courses).replace(queryParameters: params);
     final res = await http.get(uri, headers: _headers);
+
     _checkStatus(res);
-    final List data = jsonDecode(res.body);
+
+    final data = _parseBody(res);
+    if (data is! List) return [];
+
     return data.map((e) => Course.fromJson(e)).toList();
   }
 
   Future<Course> getCourse(int courseId) async {
     final res = await http.get(
-      Uri.parse('${ApiConfig.courses}/$courseId'),
+      Uri.parse(_joinUrl(ApiConfig.courses, '$courseId')),
       headers: _headers,
     );
+
     _checkStatus(res);
-    return Course.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Cours introuvable');
+    }
+
+    return Course.fromJson(data);
   }
 
   Future<Course> createCourse({
@@ -234,8 +357,18 @@ class ApiService {
         'coach_id': coachId,
       }),
     );
+
     _checkStatus(res);
-    return Course.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException(
+        'Réponse serveur vide lors de la création du cours',
+        statusCode: res.statusCode,
+      );
+    }
+
+    return Course.fromJson(data);
   }
 
   Future<Course> updateCourse({
@@ -249,36 +382,66 @@ class ApiService {
     int? maxCapacity,
     int? coachId,
   }) async {
+    final body = <String, dynamic>{
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (courseType != null) 'course_type': courseType,
+      if (level != null) 'level': level,
+      if (startTime != null) 'start_time': LocalDateTime.toApiString(startTime),
+      if (endTime != null) 'end_time': LocalDateTime.toApiString(endTime),
+      if (maxCapacity != null) 'max_capacity': maxCapacity,
+      if (coachId != null) 'coach_id': coachId,
+    };
+
     final res = await http.put(
-      Uri.parse('${ApiConfig.courses}/$courseId'),
+      Uri.parse(_joinUrl(ApiConfig.courses, '$courseId')),
       headers: _headers,
-      body: jsonEncode({
-        if (name != null) 'name': name,
-        if (description != null) 'description': description,
-        if (courseType != null) 'course_type': courseType,
-        if (level != null) 'level': level,
-        if (startTime != null) 'start_time': LocalDateTime.toApiString(startTime),
-        if (endTime != null) 'end_time': LocalDateTime.toApiString(endTime),
-        if (maxCapacity != null) 'max_capacity': maxCapacity,
-        if (coachId != null) 'coach_id': coachId,
-      }),
+      body: jsonEncode(body),
     );
+
     _checkStatus(res);
-    return Course.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException(
+        'Réponse serveur vide lors de la modification du cours',
+        statusCode: res.statusCode,
+      );
+    }
+
+    return Course.fromJson(data);
   }
 
   Future<void> deleteCourse(int courseId) async {
     final res = await http.delete(
-      Uri.parse('${ApiConfig.courses}/$courseId'),
+      Uri.parse(_joinUrl(ApiConfig.courses, '$courseId')),
       headers: _headers,
     );
+
     _checkStatus(res);
+
+    // DELETE FastAPI renvoie souvent 204 No Content, donc body vide = OK.
+    if (res.statusCode == 200 || res.statusCode == 202 || res.statusCode == 204) {
+      return;
+    }
+
+    throw ApiException(
+      'Réponse inattendue lors de la suppression (${res.statusCode})',
+      statusCode: res.statusCode,
+    );
   }
 
   Future<List<Booking>> getMyBookings() async {
-    final res = await http.get(Uri.parse(ApiConfig.myBookings), headers: _headers);
+    final res = await http.get(
+      Uri.parse(ApiConfig.myBookings),
+      headers: _headers,
+    );
+
     _checkStatus(res);
-    final List data = jsonDecode(res.body);
+
+    final data = _parseBody(res);
+    if (data is! List) return [];
+
     return data.map((e) => Booking.fromJson(e)).toList();
   }
 
@@ -288,26 +451,44 @@ class ApiService {
       headers: _headers,
       body: jsonEncode({'course_id': courseId}),
     );
+
     _checkStatus(res);
-    return Booking.fromJson(jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Réponse serveur vide lors de la réservation');
+    }
+
+    return Booking.fromJson(data);
   }
 
   Future<Booking> cancelBooking(int bookingId) async {
     final res = await http.delete(
-      Uri.parse('${ApiConfig.bookings}/$bookingId'),
+      Uri.parse(_joinUrl(ApiConfig.bookings, '$bookingId')),
       headers: _headers,
     );
+
     _checkStatus(res);
-    return Booking.fromJson(res.body.isEmpty ? <String, dynamic>{} : jsonDecode(res.body));
+
+    final data = _parseBody(res);
+    if (data == null) {
+      throw ApiException('Réponse serveur vide lors de l’annulation');
+    }
+
+    return Booking.fromJson(data);
   }
 
   Future<List<Booking>> getCourseBookings(int courseId) async {
     final res = await http.get(
-      Uri.parse('${ApiConfig.bookings}/course/$courseId'),
+      Uri.parse(_joinUrl(ApiConfig.bookings, 'course/$courseId')),
       headers: _headers,
     );
+
     _checkStatus(res);
-    final List data = jsonDecode(res.body);
+
+    final data = _parseBody(res);
+    if (data is! List) return [];
+
     return data.map((e) => Booking.fromJson(e)).toList();
   }
 }

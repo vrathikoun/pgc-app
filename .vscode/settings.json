@@ -1,0 +1,4 @@
+{
+  "python.defaultInterpreterPath": "/home/vrathikoun/proj/pgc-app/pgc-app/.venv/bin/python",
+  "python-envs.defaultEnvManager": "ms-python.python:venv"
+}
