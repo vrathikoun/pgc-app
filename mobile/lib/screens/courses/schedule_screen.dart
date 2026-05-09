@@ -85,6 +85,24 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
+      appBar: AppBar(
+        backgroundColor: AppColors.bg,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.text),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/courses');
+            }
+          },
+        ),
+        title: const Text(
+          'Détail du cours',
+          style: TextStyle(color: AppColors.text),
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -263,20 +281,34 @@ class _ScheduleGrid extends StatelessWidget {
     required this.coursesFor,
   });
 
+  static const int startHour = 6;
+  static const int endHour = 23;
+  static const double pixelsPerMinute = 1.15;
+
+  double get gridHeight => (endHour - startHour) * 60 * pixelsPerMinute;
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 80),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: days
-            .map((day) => Expanded(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 90),
+      child: SizedBox(
+        height: gridHeight,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: days
+              .map(
+                (day) => Expanded(
                   child: _DayColumn(
                     day: day,
                     courses: coursesFor(day),
+                    startHour: startHour,
+                    pixelsPerMinute: pixelsPerMinute,
+                    gridHeight: gridHeight,
                   ),
-                ))
-            .toList(),
+                ),
+              )
+              .toList(),
+        ),
       ),
     );
   }
@@ -287,24 +319,50 @@ class _ScheduleGrid extends StatelessWidget {
 class _DayColumn extends StatelessWidget {
   final DateTime day;
   final List<Course> courses;
+  final int startHour;
+  final double pixelsPerMinute;
+  final double gridHeight;
 
-  const _DayColumn({required this.day, required this.courses});
+  const _DayColumn({
+    required this.day,
+    required this.courses,
+    required this.startHour,
+    required this.pixelsPerMinute,
+    required this.gridHeight,
+  });
+
+  double _topFor(Course course) {
+    final localStart = course.startTime.toLocal();
+    final minutesFromGridStart =
+        (localStart.hour * 60 + localStart.minute) - (startHour * 60);
+
+    return minutesFromGridStart.clamp(0, 24 * 60).toDouble() * pixelsPerMinute;
+  }
+
+  double _heightFor(Course course) {
+    final duration = course.endTime.toLocal().difference(course.startTime.toLocal()).inMinutes;
+    return duration.clamp(35, 90).toDouble() * pixelsPerMinute;
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (courses.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-        child: SizedBox(height: 40),
-      );
-    }
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: Column(
-        children: courses
-            .map((c) => _ScheduleCourseChip(course: c))
-            .toList(),
+      child: SizedBox(
+        height: gridHeight,
+        child: Stack(
+          children: [
+            ...courses.map((course) {
+              return Positioned(
+                top: _topFor(course),
+                left: 0,
+                right: 0,
+                height: _heightFor(course),
+                child: _ScheduleCourseChip(course: course),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -320,57 +378,54 @@ class _ScheduleCourseChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = AppColors.forCourseType(course.courseType);
-    final time = DateFormat('HH:mm').format(course.startTime);
+    final localStart = course.startTime.toLocal();
+    final time = DateFormat('HH:mm').format(localStart);
 
     return GestureDetector(
       onTap: () => context.go('/courses/${course.id}'),
       child: Container(
         width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 6),
+        margin: const EdgeInsets.only(bottom: 4),
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: color.withOpacity(0.6)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              time,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
+        child: ClipRect(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                time,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              course.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                height: 1.1,
-              ),
-            ),
-            if (!course.isFull) ...[
               const SizedBox(height: 2),
               Text(
-                '${course.spotsAvailable}p',
+                course.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Colors.white60,
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                course.isFull ? 'Complet' : '${course.spotsAvailable}p',
+                style: TextStyle(
+                  color: course.isFull ? Colors.redAccent : Colors.white60,
                   fontSize: 9,
                 ),
               ),
-            ] else
-              const Text(
-                'Complet',
-                style: TextStyle(color: Colors.red, fontSize: 9),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

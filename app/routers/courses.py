@@ -189,3 +189,38 @@ def delete_course(
     db.delete(course)
     db.commit()
     return None
+
+@router.delete("/{course_id}/series")
+def delete_course_series(
+    course_id: int,
+    mode: str = "following",  # single | following | all
+    _admin: Member = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Cours introuvable")
+
+    if mode == "single" or not course.recurrence_group_id:
+        ids = [course.id]
+    else:
+        q = db.query(Course).filter(
+            Course.recurrence_group_id == course.recurrence_group_id
+        )
+
+        if mode == "following":
+            q = q.filter(Course.start_time >= course.start_time)
+        elif mode != "all":
+            raise HTTPException(status_code=400, detail="Mode invalide")
+
+        ids = [c.id for c in q.all()]
+
+    db.query(Booking).filter(Booking.course_id.in_(ids)).delete(
+        synchronize_session=False
+    )
+    deleted = db.query(Course).filter(Course.id.in_(ids)).delete(
+        synchronize_session=False
+    )
+    db.commit()
+
+    return {"deleted_count": deleted, "deleted_course_ids": ids}

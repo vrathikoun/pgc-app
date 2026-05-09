@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, field_validator
 
-from app.models.member import MemberRole, SubscriptionStatus, BeltRank
+from app.models.member import MemberRole, SubscriptionStatus, BeltRank, SubscriptionPlan
 
 
 def validate_password_72_bytes(v: str) -> str:
@@ -29,6 +29,7 @@ class MemberUpdate(BaseModel):
     avatar_url: Optional[str] = None
     belt_rank: Optional[str] = None
     weekly_booking_limit: Optional[int] = None
+    subscription_plan: Optional[SubscriptionPlan] = None
 
 
 class AvatarUpdate(BaseModel):
@@ -52,6 +53,7 @@ class MemberOut(BaseModel):
     subscription_status: SubscriptionStatus
     weekly_booking_limit: Optional[int] = None
     created_at: datetime
+    subscription_plan: SubscriptionPlan
 
     model_config = {"from_attributes": True}
 

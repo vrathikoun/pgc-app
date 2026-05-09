@@ -28,6 +28,10 @@ class BeltRank(str, enum.Enum):
     black = "black"
 
 
+class SubscriptionPlan(str, enum.Enum):
+    unlimited = "unlimited"
+    two_per_week = "two_per_week"
+
 
 class Member(Base):
     __tablename__ = "members"
@@ -53,6 +57,11 @@ class Member(Base):
     is_active = Column(Boolean, default=True)
     subscription_status = Column(
         Enum(SubscriptionStatus), default=SubscriptionStatus.trial
+    )
+    subscription_plan = Column(
+        Enum(SubscriptionPlan),
+        default=SubscriptionPlan.unlimited,
+        nullable=False,
     )
 
     # Stripe

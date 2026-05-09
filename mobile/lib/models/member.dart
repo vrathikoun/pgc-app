@@ -9,6 +9,7 @@ class Member {
   final String role;
   final bool isActive;
   final String subscriptionStatus;
+  final String subscriptionPlan;
   final int? weeklyBookingLimit;
   final DateTime? createdAt;
 
@@ -23,6 +24,7 @@ class Member {
     required this.role,
     required this.isActive,
     required this.subscriptionStatus,
+    required this.subscriptionPlan,
     this.weeklyBookingLimit,
     this.createdAt,
   });
@@ -51,6 +53,7 @@ class Member {
       role: json['role'] ?? 'member',
       isActive: json['is_active'] ?? true,
       subscriptionStatus: json['subscription_status'] ?? 'inactive',
+      subscriptionPlan: json['subscription_plan'] ?? 'unlimited',
       weeklyBookingLimit: json['weekly_booking_limit'],
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'])
@@ -70,6 +73,7 @@ class Member {
       'role': role,
       'is_active': isActive,
       'subscription_status': subscriptionStatus,
+      'subscription_plan': subscriptionPlan,
       'weekly_booking_limit': weeklyBookingLimit,
       'created_at': createdAt?.toIso8601String(),
     };

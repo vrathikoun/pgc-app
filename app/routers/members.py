@@ -1,6 +1,4 @@
 import base64
-import uuid
-from pathlib import Path
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,30 +8,77 @@ from sqlalchemy.orm import Session
 from app.core.security import decode_access_token
 from app.database import get_db
 from app.models.member import Member, MemberRole
-from app.schemas.member_schema import AvatarUpdate, MemberAdminRoleUpdate, MemberOut, MemberUpdate
-
-UPLOAD_DIR = Path("uploads/avatars")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+from app.schemas.member_schema import (
+    AvatarUpdate,
+    MemberAdminRoleUpdate,
+    MemberOut,
+    MemberUpdate,
+)
+from app.services.storage_service import upload_profile_picture
 
 router = APIRouter(prefix="/members", tags=["Members"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
+def _decode_avatar_base64(image_b64: str) -> tuple[bytes, str]:
+    """
+    Accepte :
+    - data:image/jpeg;base64,xxxxx
+    - data:image/png;base64,xxxxx
+    - data:image/webp;base64,xxxxx
+
+    Retourne :
+    - bytes de l'image
+    - extension normalisée : jpg/png/webp
+    """
+    if "," not in image_b64:
+        raise ValueError("Format base64 invalide")
+
+    header, encoded = image_b64.split(",", 1)
+
+    if not header.startswith("data:image/"):
+        raise ValueError("Le fichier doit être une image")
+
+    ext = header.split("/")[1].split(";")[0].lower()
+
+    if ext == "jpeg":
+        ext = "jpg"
+
+    if ext not in ("jpg", "png", "webp"):
+        raise ValueError("Format non supporté. Formats acceptés : jpg, png, webp")
+
+    try:
+        image_bytes = base64.b64decode(encoded)
+    except Exception:
+        raise ValueError("Impossible de décoder l'image")
+
+    if not image_bytes:
+        raise ValueError("Image vide")
+
+    return image_bytes, ext
+
+
 def get_current_member(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
 ) -> Member:
     payload = decode_access_token(token)
+
     if not payload:
         raise HTTPException(status_code=401, detail="Token invalide ou expiré")
+
     member = db.query(Member).filter(Member.id == int(payload["sub"])).first()
+
     if not member or not member.is_active:
         raise HTTPException(status_code=401, detail="Membre introuvable")
+
     return member
 
 
 def require_admin(current: Member = Depends(get_current_member)) -> Member:
     if current.role != MemberRole.admin:
         raise HTTPException(status_code=403, detail="Accès réservé aux admins")
+
     return current
 
 
@@ -42,12 +87,52 @@ def get_me(current: Member = Depends(get_current_member)):
     return current
 
 
+@router.put("/me", response_model=MemberOut)
+def update_me(
+    data: MemberUpdate,
+    current: Member = Depends(get_current_member),
+    db: Session = Depends(get_db),
+):
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(current, field, value)
+
+    db.commit()
+    db.refresh(current)
+
+    return current
+
+
+@router.post("/me/avatar", response_model=MemberOut)
+def upload_my_avatar(
+    data: AvatarUpdate,
+    current: Member = Depends(get_current_member),
+    db: Session = Depends(get_db),
+):
+    """
+    Upload avatar du membre connecté.
+    L'image est envoyée vers Google Cloud Storage.
+    La DB stocke l'URL publique GCS.
+    """
+    try:
+        image_bytes, ext = _decode_avatar_base64(data.image_b64)
+        public_url = upload_profile_picture(image_bytes, extension=ext)
+
+        current.avatar_url = public_url
+
+        db.commit()
+        db.refresh(current)
+
+        return current
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Upload invalide : {e}")
+
+
 @router.get("/coaches", response_model=List[MemberOut])
 def list_coaches(
     _current: Member = Depends(get_current_member),
     db: Session = Depends(get_db),
 ):
-    """Liste des coachs et admins — accessible à tous les membres connectés."""
     return (
         db.query(Member)
         .filter(
@@ -59,15 +144,12 @@ def list_coaches(
     )
 
 
-
-
 @router.get("/coaches/{coach_id}", response_model=MemberOut)
 def get_coach_public(
     coach_id: int,
     _current: Member = Depends(get_current_member),
     db: Session = Depends(get_db),
 ):
-    """Profil coach visible par tous les membres connectés."""
     coach = (
         db.query(Member)
         .filter(
@@ -77,78 +159,11 @@ def get_coach_public(
         )
         .first()
     )
+
     if not coach:
         raise HTTPException(status_code=404, detail="Coach introuvable")
+
     return coach
-
-
-@router.put("/me", response_model=MemberOut)
-def update_me(
-    data: MemberUpdate,
-    current: Member = Depends(get_current_member),
-    db: Session = Depends(get_db),
-):
-    for field, value in data.model_dump(exclude_none=True).items():
-        setattr(current, field, value)
-    db.commit()
-    db.refresh(current)
-    return current
-
-
-@router.post("/me/avatar", response_model=MemberOut)
-def upload_my_avatar(
-    data: AvatarUpdate,
-    current: Member = Depends(get_current_member),
-    db: Session = Depends(get_db),
-):
-    """
-    Upload avatar en base64. Le client envoie { "image_b64": "data:image/jpeg;base64,..." }
-    On sauvegarde le fichier localement et on stocke l'URL dans avatar_url.
-    """
-    try:
-        # Séparer le header data:image/jpeg;base64, du contenu
-        header, encoded = data.image_b64.split(",", 1)
-        ext = header.split("/")[1].split(";")[0]  # jpeg, png, webp
-        if ext not in ("jpeg", "jpg", "png", "webp"):
-            raise ValueError("Format non supporté")
-
-        filename = f"{uuid.uuid4().hex}.{ext}"
-        filepath = UPLOAD_DIR / filename
-        filepath.write_bytes(base64.b64decode(encoded))
-
-        current.avatar_url = f"/uploads/avatars/{filename}"
-        db.commit()
-        db.refresh(current)
-        return current
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Upload invalide : {e}")
-
-
-@router.post("/{member_id}/avatar", response_model=MemberOut)
-def upload_member_avatar(
-    member_id: int,
-    data: AvatarUpdate,
-    _admin: Member = Depends(require_admin),
-    db: Session = Depends(get_db),
-):
-    """Admin peut changer l'avatar de n'importe quel membre."""
-    member = db.query(Member).filter(Member.id == member_id).first()
-    if not member:
-        raise HTTPException(status_code=404, detail="Membre introuvable")
-    try:
-        header, encoded = data.image_b64.split(",", 1)
-        ext = header.split("/")[1].split(";")[0]
-        if ext not in ("jpeg", "jpg", "png", "webp"):
-            raise ValueError("Format non supporté")
-        filename = f"{uuid.uuid4().hex}.{ext}"
-        filepath = UPLOAD_DIR / filename
-        filepath.write_bytes(base64.b64decode(encoded))
-        member.avatar_url = f"/uploads/avatars/{filename}"
-        db.commit()
-        db.refresh(member)
-        return member
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Upload invalide : {e}")
 
 
 @router.get("/", response_model=List[MemberOut])
@@ -158,7 +173,13 @@ def list_members(
     _admin: Member = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    return db.query(Member).order_by(Member.created_at.desc()).offset(skip).limit(limit).all()
+    return (
+        db.query(Member)
+        .order_by(Member.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get("/{member_id}", response_model=MemberOut)
@@ -168,9 +189,43 @@ def get_member(
     db: Session = Depends(get_db),
 ):
     member = db.query(Member).filter(Member.id == member_id).first()
+
     if not member:
         raise HTTPException(status_code=404, detail="Membre introuvable")
+
     return member
+
+
+@router.post("/{member_id}/avatar", response_model=MemberOut)
+def upload_member_avatar(
+    member_id: int,
+    data: AvatarUpdate,
+    _admin: Member = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Upload avatar par un admin pour n'importe quel membre.
+    L'image est envoyée vers Google Cloud Storage.
+    La DB stocke l'URL publique GCS.
+    """
+    member = db.query(Member).filter(Member.id == member_id).first()
+
+    if not member:
+        raise HTTPException(status_code=404, detail="Membre introuvable")
+
+    try:
+        image_bytes, ext = _decode_avatar_base64(data.image_b64)
+        public_url = upload_profile_picture(image_bytes, extension=ext)
+
+        member.avatar_url = public_url
+
+        db.commit()
+        db.refresh(member)
+
+        return member
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Upload invalide : {e}")
 
 
 @router.patch("/{member_id}/role", response_model=MemberOut)
@@ -181,11 +236,15 @@ def update_member_role(
     db: Session = Depends(get_db),
 ):
     member = db.query(Member).filter(Member.id == member_id).first()
+
     if not member:
         raise HTTPException(status_code=404, detail="Membre introuvable")
+
     member.role = data.role
+
     db.commit()
     db.refresh(member)
+
     return member
 
 
@@ -196,14 +255,17 @@ def update_member(
     _admin: Member = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """Admin peut modifier le profil complet d'un membre."""
     member = db.query(Member).filter(Member.id == member_id).first()
+
     if not member:
         raise HTTPException(status_code=404, detail="Membre introuvable")
+
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(member, field, value)
+
     db.commit()
     db.refresh(member)
+
     return member
 
 
@@ -214,7 +276,12 @@ def deactivate_member(
     db: Session = Depends(get_db),
 ):
     member = db.query(Member).filter(Member.id == member_id).first()
+
     if not member:
         raise HTTPException(status_code=404, detail="Membre introuvable")
+
     member.is_active = False
+
     db.commit()
+
+    return None

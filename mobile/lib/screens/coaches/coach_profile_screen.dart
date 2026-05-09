@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:pgc_app/models/course.dart';
 import 'package:pgc_app/models/member.dart';
@@ -75,7 +76,24 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
     if (_error != null || _coach == null) {
       return Scaffold(
         backgroundColor: AppColors.bg,
-        appBar: AppBar(title: const Text('Coach')),
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.text),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/courses');
+              }
+            },
+          ),
+          title: const Text(
+            'Détail du cours',
+            style: TextStyle(color: AppColors.text),
+          ),
+        ),
         body: Center(
           child: Text(_error ?? 'Coach introuvable', style: const TextStyle(color: AppColors.danger)),
         ),

@@ -72,7 +72,24 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Mes cours')),
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.text),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/courses');
+            }
+          },
+        ),
+        title: const Text(
+          'Détail du cours',
+          style: TextStyle(color: AppColors.text),
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: _loadBookings,
         child: _loading

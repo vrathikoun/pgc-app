@@ -61,6 +61,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
+      appBar: AppBar(
+      backgroundColor: AppColors.bg,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: AppColors.text),
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/courses');
+          }
+        },
+      ),
+      title: const Text(
+        'Détail du cours',
+        style: TextStyle(color: AppColors.text),
+      ),
+    ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),

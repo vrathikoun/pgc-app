@@ -86,7 +86,24 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Coach')),
+      appBar: AppBar(
+        backgroundColor: AppColors.bg,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.text),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/courses');
+            }
+          },
+        ),
+        title: const Text(
+          'Détail du cours',
+          style: TextStyle(color: AppColors.text),
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.gold))
           : _error != null
@@ -260,3 +277,4 @@ class _CourseTypeCard extends StatelessWidget {
     );
   }
 }
+

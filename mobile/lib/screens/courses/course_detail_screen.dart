@@ -73,7 +73,24 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('Détail du cours')),
+      appBar: AppBar(
+        backgroundColor: AppColors.bg,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.text),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/courses');
+            }
+          },
+        ),
+        title: const Text(
+          'Détail du cours',
+          style: TextStyle(color: AppColors.text),
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.gold))
           : _course == null

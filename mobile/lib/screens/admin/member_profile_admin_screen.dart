@@ -27,17 +27,37 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _weeklyLimitCtrl = TextEditingController();
+
   String? _selectedRole;
   String? _selectedBelt;
+  String _selectedSubscriptionPlan = 'unlimited';
 
   static const _roles = ['member', 'coach', 'admin'];
+
   static const _belts = [
-    'white', 'blue', 'purple', 'brown', 'black',
+    'white',
+    'blue',
+    'purple',
+    'brown',
+    'black',
   ];
+
   static const _beltLabels = {
-    'white': 'Blanche', 'blue': 'Bleue', 'purple': 'Violette',
-    'brown': 'Marron', 'black': 'Noire',
+    'white': 'Blanche',
+    'blue': 'Bleue',
+    'purple': 'Violette',
+    'brown': 'Marron',
+    'black': 'Noire',
+  };
+
+  static const _subscriptionPlans = [
+    'unlimited',
+    'two_per_week',
+  ];
+
+  static const _subscriptionPlanLabels = {
+    'unlimited': '♾️ Illimité',
+    'two_per_week': '2 cours / semaine',
   };
 
   @override
@@ -51,24 +71,27 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _phoneCtrl.dispose();
-    _weeklyLimitCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
     try {
       final api = context.read<AuthProvider>().api;
-      // On utilise GET /members/{id} (admin)
       final members = await api.getMembers(limit: 500);
       final member = members.firstWhere((m) => m.id == widget.memberId);
+
       _member = member;
       _firstNameCtrl.text = member.firstName;
       _lastNameCtrl.text = member.lastName;
       _phoneCtrl.text = member.phone ?? '';
       _selectedRole = member.role;
       _selectedBelt = member.beltRank ?? 'white';
-      _weeklyLimitCtrl.text = member.weeklyBookingLimit?.toString() ?? '';
+      _selectedSubscriptionPlan = member.subscriptionPlan;
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -78,26 +101,27 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
 
   Future<void> _save() async {
     if (_member == null) return;
+
     setState(() => _saving = true);
+
     try {
       final api = context.read<AuthProvider>().api;
 
-      // Mettre à jour le profil
       final updated = await api.updateMember(
         _member!.id,
         firstName: _firstNameCtrl.text.trim(),
         lastName: _lastNameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
         beltRank: _selectedBelt,
-        weeklyBookingLimit: _weeklyLimitCtrl.text.trim().isEmpty ? null : int.tryParse(_weeklyLimitCtrl.text.trim()),
+        subscriptionPlan: _selectedSubscriptionPlan,
       );
 
-      // Mettre à jour le rôle si changé
       if (_selectedRole != null && _selectedRole != _member!.role) {
         await api.updateMemberRole(_member!.id, _selectedRole!);
       }
 
       setState(() => _member = updated);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -109,7 +133,10 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e'), backgroundColor: AppColors.danger),
+          SnackBar(
+            content: Text('Erreur : $e'),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     } finally {
@@ -119,11 +146,15 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
 
   Future<void> _onAvatarUploaded(String base64Image) async {
     if (_member == null) return;
+
     setState(() => _uploadingAvatar = true);
+
     try {
       final api = context.read<AuthProvider>().api;
       final updated = await api.uploadMemberAvatar(_member!.id, base64Image);
+
       setState(() => _member = updated);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -135,7 +166,10 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: AppColors.danger),
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     } finally {
@@ -147,8 +181,17 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
     if (url == null || url.isEmpty) return null;
     if (url.startsWith('assets/')) return url;
     if (url.startsWith('http')) return url;
-    final base = context.read<AuthProvider>().api.baseUrl.replaceAll(RegExp(r'/$'), '');
+
+    final base =
+        context.read<AuthProvider>().api.baseUrl.replaceAll(RegExp(r'/$'), '');
     return '$base$url';
+  }
+
+  String _subscriptionSummary(String plan) {
+    if (plan == 'two_per_week') {
+      return 'Ce membre sera limité à 2 réservations confirmées par semaine.';
+    }
+    return 'Ce membre pourra réserver un nombre illimité de cours.';
   }
 
   @override
@@ -156,32 +199,59 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: Text(_member?.fullName ?? 'Profil membre'),
+        backgroundColor: AppColors.bg,
+        elevation: 0,
+        title: Text(
+          _member?.fullName ?? 'Profil membre',
+          style: const TextStyle(color: AppColors.text),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/admin/members'),
+          icon: const Icon(Icons.arrow_back, color: AppColors.text),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/admin/members');
+            }
+          },
         ),
         actions: [
           if (!_saving)
             TextButton(
               onPressed: _save,
-              child: const Text('Enregistrer',
-                  style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w800)),
+              child: const Text(
+                'Enregistrer',
+                style: TextStyle(
+                  color: AppColors.gold,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             )
           else
             const Padding(
               padding: EdgeInsets.all(16),
               child: SizedBox(
-                width: 20, height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.gold,
+                ),
               ),
             ),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.gold))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.gold),
+            )
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: AppColors.danger)))
+              ? Center(
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: AppColors.danger),
+                  ),
+                )
               : _buildForm(),
     );
   }
@@ -196,10 +266,10 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Avatar ────────────────────────────────────────────────────────
           if (_uploadingAvatar)
             const SizedBox(
-              width: 96, height: 96,
+              width: 96,
+              height: 96,
               child: CircularProgressIndicator(color: AppColors.gold),
             )
           else
@@ -212,13 +282,14 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
             ),
 
           const SizedBox(height: 8),
+
           Text(
             member.email,
             style: const TextStyle(color: AppColors.muted, fontSize: 13),
           ),
+
           const SizedBox(height: 28),
 
-          // ── Champs éditables ──────────────────────────────────────────────
           _Section(title: 'Informations', children: [
             _Field(label: 'Prénom', controller: _firstNameCtrl),
             const SizedBox(height: 12),
@@ -233,23 +304,23 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
 
           const SizedBox(height: 20),
 
-          // ── Rôle ──────────────────────────────────────────────────────────
           _Section(title: 'Rôle', children: [
             _DropdownField<String>(
               value: _selectedRole,
               items: _roles,
-              labelFor: (r) => const {
-                'member': '🏋️ Membre',
-                'coach': '🥊 Coach',
-                'admin': '👑 Admin',
-              }[r] ?? r,
+              labelFor: (r) =>
+                  const {
+                    'member': '🏋️ Membre',
+                    'coach': '🥊 Coach',
+                    'admin': '👑 Admin',
+                  }[r] ??
+                  r,
               onChanged: (v) => setState(() => _selectedRole = v),
             ),
           ]),
 
           const SizedBox(height: 20),
 
-          // ── Ceinture ──────────────────────────────────────────────────────
           _Section(title: 'Niveau / Ceinture', children: [
             _DropdownField<String>(
               value: _selectedBelt,
@@ -259,28 +330,61 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
             ),
           ]),
 
-
           const SizedBox(height: 20),
 
-          _Section(title: 'Limite de réservation', children: [
-            _Field(
-              label: 'Cours max par semaine (vide = illimité)',
-              controller: _weeklyLimitCtrl,
-              keyboardType: TextInputType.number,
+          _Section(title: 'Abonnement', children: [
+            _DropdownField<String>(
+              value: _selectedSubscriptionPlan,
+              items: _subscriptionPlans,
+              labelFor: (p) => _subscriptionPlanLabels[p] ?? p,
+              onChanged: (v) {
+                if (v == null) return;
+                setState(() => _selectedSubscriptionPlan = v);
+              },
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.info_outline,
+                  color: AppColors.gold,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _subscriptionSummary(_selectedSubscriptionPlan),
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 13,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ]),
 
-          // ── Statut abonnement (lecture seule) ─────────────────────────────
-          _Section(title: 'Abonnement', children: [
+          const SizedBox(height: 20),
+
+          _Section(title: 'Statut abonnement', children: [
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  const Icon(Icons.card_membership, color: AppColors.gold, size: 18),
+                  const Icon(
+                    Icons.card_membership,
+                    color: AppColors.gold,
+                    size: 18,
+                  ),
                   const SizedBox(width: 12),
                   Text(
                     _subLabel(member.subscriptionStatus),
-                    style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -304,31 +408,38 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
     );
   }
 
-  String _subLabel(String s) => const {
-    'active': '✅ Actif',
-    'inactive': '❌ Inactif',
-    'trial': '🎁 Période d\'essai',
-    'suspended': '⚠️ Suspendu',
-  }[s] ?? s;
+  String _subLabel(String s) =>
+      const {
+        'active': '✅ Actif',
+        'inactive': '❌ Inactif',
+        'trial': '🎁 Période d\'essai',
+        'suspended': '⚠️ Suspendu',
+      }[s] ??
+      s;
 }
-
-// ── Composants locaux ─────────────────────────────────────────────────────────
 
 class _Section extends StatelessWidget {
   final String title;
   final List<Widget> children;
-  const _Section({required this.title, required this.children});
+
+  const _Section({
+    required this.title,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+          ),
           const SizedBox(height: 8),
           Container(
             width: double.infinity,
@@ -348,7 +459,12 @@ class _Field extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final TextInputType? keyboardType;
-  const _Field({required this.label, required this.controller, this.keyboardType});
+
+  const _Field({
+    required this.label,
+    required this.controller,
+    this.keyboardType,
+  });
 
   @override
   Widget build(BuildContext context) => TextField(
@@ -358,7 +474,10 @@ class _Field extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
         ),
       );
 }
@@ -384,10 +503,12 @@ class _DropdownField<T> extends StatelessWidget {
           dropdownColor: AppColors.surface2,
           style: const TextStyle(color: AppColors.text, fontSize: 15),
           items: items
-              .map((item) => DropdownMenuItem<T>(
-                    value: item,
-                    child: Text(labelFor(item)),
-                  ))
+              .map(
+                (item) => DropdownMenuItem<T>(
+                  value: item,
+                  child: Text(labelFor(item)),
+                ),
+              )
               .toList(),
           onChanged: onChanged,
         ),

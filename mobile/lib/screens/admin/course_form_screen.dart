@@ -55,14 +55,16 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
       setState(() {
         _coaches = members.where((m) => m.role == 'coach' || m.role == 'admin').toList();
         if (course != null) {
+          final localStart = course.startTime.toLocal();
+          final localEnd = course.endTime.toLocal();  
           _nameCtrl.text = course.name;
           _descriptionCtrl.text = course.description ?? '';
           _capacityCtrl.text = course.maxCapacity.toString();
           _courseType = course.courseType;
           _level = course.level;
           _coachId = course.coachId;
-          _date = DateTime(course.startTime.year, course.startTime.month, course.startTime.day);
-          _start = TimeOfDay(hour: course.startTime.hour, minute: course.startTime.minute);
+          _date = DateTime(localStart.year, localStart.month, localStart.day);
+          _start = TimeOfDay(hour: localStart.hour, minute: localStart.minute);
           _durationMinutes = course.endTime.difference(course.startTime).inMinutes;
         }
         _initialLoading = false;
@@ -89,9 +91,11 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
         final end = start.add(Duration(minutes: _durationMinutes));
         if (widget.isEdit) {
           await api.updateCourse(
-            courseId: widget.courseId!,
+            widget.courseId!,
             name: _nameCtrl.text.trim(),
-            description: _descriptionCtrl.text.trim(),
+            description: _descriptionCtrl.text.trim().isEmpty
+                ? null
+                : _descriptionCtrl.text.trim(),
             courseType: _courseType,
             level: _level,
             startTime: start,
@@ -204,7 +208,7 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
                           DropdownMenuItem(value: 8, child: Text('8 semaines')),
                           DropdownMenuItem(value: 12, child: Text('12 semaines')),
                           DropdownMenuItem(value: 16, child: Text('16 semaines')),
-                          DropdownMenuItem(value: 16, child: Text('52 semaines')),
+                          DropdownMenuItem(value: 52, child: Text('52 semaines')),
                         ], onChanged: (v) => setState(() => _recurrenceWeeks = v!)),
                       ],
                       if (_error != null) ...[const SizedBox(height: 16), Text(_error!, style: const TextStyle(color: AppColors.danger))],

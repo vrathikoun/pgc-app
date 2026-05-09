@@ -82,7 +82,7 @@ class _CourseListScreenState extends State<CourseListScreen> {
     final selectedCourses = _selectedCourses;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadData,

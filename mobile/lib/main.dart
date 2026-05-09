@@ -141,16 +141,25 @@ class PgcApp extends StatelessWidget {
 class MainShell extends StatelessWidget {
   final Widget child;
 
-  const MainShell({super.key, required this.child});
+  const MainShell({
+    super.key,
+    required this.child,
+  });
 
   int _selectedIndex(BuildContext context, bool isAdmin) {
     final location = GoRouterState.of(context).matchedLocation;
 
-    if (location.startsWith('/courses')) return 0;
-    if (location.startsWith('/schedule')) return 1;
-    if (location.startsWith('/bookings')) return 2;
-    if (location.startsWith('/profile')) return 3;
-    if (isAdmin && location.startsWith('/admin')) return 4;
+    int _selectedIndex(BuildContext context, bool isAdmin) {
+  final location = GoRouterState.of(context).matchedLocation;
+
+  if (location.startsWith('/courses')) return 0;
+  if (location.startsWith('/schedule')) return 1;
+  if (location.startsWith('/bookings')) return 2;
+  if (location.startsWith('/profile')) return 3;
+  if (isAdmin && location.startsWith('/admin')) return 4;
+
+  return 0;
+}
 
     return 0;
   }
@@ -158,33 +167,70 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAdmin = context.watch<AuthProvider>().member?.isAdmin ?? false;
-    final index = _selectedIndex(context, isAdmin);
 
-    final items = <_NavItem>[
-      _NavItem(Icons.calendar_today, 'Planning', '/courses'),
-      _NavItem(Icons.grid_view, 'Semaine', '/schedule'),
-      _NavItem(Icons.bookmark, 'Mes cours', '/bookings'),
-      _NavItem(Icons.person, 'Profil', '/profile'),
-      if (isAdmin) _NavItem(Icons.admin_panel_settings, 'Admin', '/admin'),
+    final items = <BottomNavigationBarItem>[
+      const BottomNavigationBarItem(
+      icon: Icon(Icons.fitness_center),
+      label: 'Courses',
+    ),
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.calendar_today),
+      label: 'Schedule',
+    ),
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.bookmark),
+      label: 'Bookings',
+    ),
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.person),
+      label: 'Profile',
+    ),
+    if (isAdmin)
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.admin_panel_settings),
+        label: 'Admin',
+      ),
     ];
 
-  return Scaffold(
-    body: SafeArea(
-      child: _pages[_selectedIndex],
-    ),
-    bottomNavigationBar: SafeArea(
-      child: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
-        ],
+    return Scaffold(
+      body: child,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BottomNavigationBar(
+              backgroundColor: AppColors.surface,
+              selectedItemColor: AppColors.gold,
+              unselectedItemColor: AppColors.muted,
+              type: BottomNavigationBarType.fixed,
+              currentIndex: _selectedIndex(context, isAdmin),
+              onTap: (i) {
+                switch (i) {
+                  case 0:
+                    context.go('/courses');
+                    break;
+                  case 1:
+                    context.go('/schedule');
+                    break;
+                  case 2:
+                    context.go('/bookings');
+                    break;
+                  case 3:
+                    context.go('/profile');
+                    break;
+                  case 4:
+                    if (isAdmin) context.go('/admin');
+                    break;
+                }
+              },
+              items: items,
+            ),
+          ),
+        ),
       ),
-    ),
-  );
+    );
   }
 }
 
