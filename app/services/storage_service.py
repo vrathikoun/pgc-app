@@ -2,7 +2,7 @@ import os
 import uuid
 from google.cloud import storage
 
-BUCKET_NAME = os.getenv("GCP_BUCKET_NAME", "pgc_uploads")
+BUCKET_NAME = os.getenv("GCP_BUCKET_NAME", "pgcupload")
 
 _storage_client = storage.Client()
 _bucket = _storage_client.bucket(BUCKET_NAME)
@@ -28,6 +28,4 @@ def upload_profile_picture(image_bytes: bytes, extension: str = "jpg") -> str:
         content_type=content_type,
     )
 
-    blob.make_public()
-
-    return blob.public_url
+    return f"https://storage.googleapis.com/{BUCKET_NAME}/{filename}"
