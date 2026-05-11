@@ -16,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
+  bool _rememberMe = true;
 
   @override
   void dispose() {
@@ -26,7 +27,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _submit() async {
     final auth = context.read<AuthProvider>();
-    final ok = await auth.login(_emailCtrl.text.trim(), _passwordCtrl.text);
+
+    final ok = await auth.login(
+      _emailCtrl.text.trim(),
+      _passwordCtrl.text,
+      rememberMe: _rememberMe,
+    );
+
     if (ok && mounted) context.go('/courses');
   }
 
@@ -84,6 +91,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 14),
                   Text(auth.error!, style: const TextStyle(color: AppColors.danger), textAlign: TextAlign.center),
                 ],
+                CheckboxListTile(
+                  value: _rememberMe,
+                  activeColor: AppColors.gold,
+                  checkColor: Colors.black,
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Se souvenir de moi',
+                    style: TextStyle(color: AppColors.text),
+                  ),
+                  subtitle: const Text(
+                    'Rester connecté sur ce téléphone',
+                    style: TextStyle(color: AppColors.muted, fontSize: 13),
+                  ),
+                  onChanged: (v) {
+                    setState(() => _rememberMe = v ?? true);
+                  },
+                ),
                 const SizedBox(height: 28),
                 SizedBox(
                   height: 54,

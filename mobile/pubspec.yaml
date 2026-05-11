@@ -23,6 +23,8 @@ dependencies:
   # Upload photo
   image_picker: ^1.1.2
   flutter_image_compress: ^2.3.0
+  youtube_player_flutter: ^9.0.0
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
@@ -40,14 +42,9 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icons/PGC_logo_app.png"
-  min_sdk_android: 21
 
-flutter_icons:
-  android: true
-  ios: true
+  image_path_android: "assets/PGC_removebg.png"
+  adaptive_icon_background: "#123B1E"
+  adaptive_icon_foreground: "assets/PGC_removebg.png"
 
-  image_path: "assets/icon.png"
-
-  adaptive_icon_background: "#0F2A1D"   # vert PGC (ou couleur de fond)
-  adaptive_icon_foreground: "assets/icon_foreground.png"
+  image_path_ios: "assets/logo_ios.png"

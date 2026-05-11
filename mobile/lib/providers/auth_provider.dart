@@ -20,11 +20,15 @@ class AuthProvider extends ChangeNotifier {
 
   ApiService get api => ApiService(token: _token);
 
-  // Appelé au démarrage de l'app
   Future<void> tryAutoLogin() async {
     final saved = await _storage.read(key: _tokenKey);
-    if (saved == null) return;
+
+    if (saved == null || saved.isEmpty) {
+      return;
+    }
+
     _token = saved;
+
     try {
       _member = await ApiService(token: saved).getMe();
       notifyListeners();
@@ -33,19 +37,38 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(
+    String email,
+    String password, {
+    bool rememberMe = true,
+  }) async {
     _loading = true;
     _error = null;
     notifyListeners();
 
     try {
       final data = await ApiService().login(email, password);
+
       _token = data['access_token'];
-      _member = Member.fromJson(data['member']);
-      await _storage.write(key: _tokenKey, value: _token);
+
+      if (data['member'] != null) {
+        _member = Member.fromJson(data['member']);
+      } else {
+        _member = await ApiService(token: _token).getMe();
+      }
+
+      if (rememberMe) {
+        await _storage.write(key: _tokenKey, value: _token);
+      } else {
+        await _storage.delete(key: _tokenKey);
+      }
+
       return true;
     } on ApiException catch (e) {
       _error = e.message;
+      return false;
+    } catch (e) {
+      _error = e.toString();
       return false;
     } finally {
       _loading = false;
@@ -58,6 +81,7 @@ class AuthProvider extends ChangeNotifier {
     required String password,
     required String firstName,
     required String lastName,
+    bool rememberMe = true,
   }) async {
     _loading = true;
     _error = null;
@@ -70,10 +94,17 @@ class AuthProvider extends ChangeNotifier {
         firstName: firstName,
         lastName: lastName,
       );
-      // Auto-login après inscription
-      return await login(email, password);
+
+      return await login(
+        email,
+        password,
+        rememberMe: rememberMe,
+      );
     } on ApiException catch (e) {
       _error = e.message;
+      return false;
+    } catch (e) {
+      _error = e.toString();
       return false;
     } finally {
       _loading = false;
@@ -88,7 +119,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Met à jour le membre en mémoire (après upload avatar, update profil, etc.)
   Future<void> refreshMember(Member updated) async {
     _member = updated;
     notifyListeners();

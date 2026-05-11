@@ -53,7 +53,7 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
       }
 
       setState(() {
-        _coaches = members.where((m) => m.role == 'coach' || m.role == 'admin').toList();
+        _coaches = members.where((m) => m.role == 'coach').toList();
         if (course != null) {
           final localStart = course.startTime.toLocal();
           final localEnd = course.endTime.toLocal();  

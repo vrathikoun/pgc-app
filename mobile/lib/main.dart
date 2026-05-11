@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:pgc_app/screens/academy/academy_screen.dart';
+import 'package:pgc_app/screens/academy/academy_section_screen.dart';
 
 import 'package:pgc_app/providers/auth_provider.dart';
 import 'package:pgc_app/screens/auth/login_screen.dart';
@@ -56,13 +58,20 @@ class PgcApp extends StatelessWidget {
       },
       routes: [
         GoRoute(
+          path: '/',
+          redirect: (_, __) => '/courses',
+        ),
+
+        GoRoute(
           path: '/login',
           builder: (_, __) => const LoginScreen(),
         ),
+
         GoRoute(
           path: '/register',
           builder: (_, __) => const RegisterScreen(),
         ),
+
         ShellRoute(
           builder: (context, state, child) => MainShell(child: child),
           routes: [
@@ -70,24 +79,46 @@ class PgcApp extends StatelessWidget {
               path: '/courses',
               builder: (_, __) => const CourseListScreen(),
             ),
+
             GoRoute(
               path: '/schedule',
               builder: (_, __) => const ScheduleScreen(),
             ),
+
             GoRoute(
               path: '/courses/:id',
               builder: (_, state) => CourseDetailScreen(
                 courseId: int.parse(state.pathParameters['id']!),
               ),
             ),
+
             GoRoute(
               path: '/bookings',
               builder: (_, __) => const MyBookingsScreen(),
             ),
+
+            GoRoute(
+              path: '/',
+              redirect: (_, __) => '/courses',
+            ),
+
+            GoRoute(
+              path: '/academy',
+              builder: (_, __) => const AcademyScreen(),
+            ),
+
+            GoRoute(
+              path: '/academy/:section',
+              builder: (_, state) => AcademySectionScreen(
+                section: Uri.decodeComponent(state.pathParameters['section']!),
+              ),
+            ),
+
             GoRoute(
               path: '/profile',
               builder: (_, __) => const ProfileScreen(),
             ),
+
             GoRoute(
               path: '/coaches/:id',
               builder: (_, state) => CoachProfileScreen(
@@ -100,24 +131,29 @@ class PgcApp extends StatelessWidget {
               path: '/admin',
               builder: (_, __) => const AdminDashboardScreen(),
             ),
+
             GoRoute(
               path: '/admin/courses/new',
               builder: (_, __) => const CourseFormScreen(),
             ),
+
             GoRoute(
               path: '/admin/courses/:id/edit',
               builder: (_, state) => CourseFormScreen(
                 courseId: int.parse(state.pathParameters['id']!),
               ),
             ),
+
             GoRoute(
               path: '/admin/schedule',
               builder: (_, __) => const ScheduleAdminScreen(),
             ),
+
             GoRoute(
               path: '/admin/members',
               builder: (_, __) => const MemberAdminScreen(),
             ),
+
             GoRoute(
               path: '/admin/members/:id',
               builder: (_, state) => MemberProfileAdminScreen(
@@ -156,7 +192,8 @@ class MainShell extends StatelessWidget {
   if (location.startsWith('/schedule')) return 1;
   if (location.startsWith('/bookings')) return 2;
   if (location.startsWith('/profile')) return 3;
-  if (isAdmin && location.startsWith('/admin')) return 4;
+  if (location.startsWith('/academy')) return 4;
+  if (isAdmin && location.startsWith('/admin')) return 5;
 
   return 0;
 }
@@ -167,6 +204,7 @@ class MainShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAdmin = context.watch<AuthProvider>().member?.isAdmin ?? false;
+    final hasAcademyAccess = context.watch<AuthProvider>().member?.subscriptionPlan == 'unlimited';
 
     final items = <BottomNavigationBarItem>[
       const BottomNavigationBarItem(
@@ -185,6 +223,11 @@ class MainShell extends StatelessWidget {
       icon: Icon(Icons.person),
       label: 'Profile',
     ),
+    if (hasAcademyAccess)
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.school),
+        label: 'Academy',
+      ),
     if (isAdmin)
       const BottomNavigationBarItem(
         icon: Icon(Icons.admin_panel_settings),
@@ -220,7 +263,10 @@ class MainShell extends StatelessWidget {
                   case 3:
                     context.go('/profile');
                     break;
-                  case 4:
+                    case 4:
+                      context.go('/academy');
+                      break;
+                  case 5:
                     if (isAdmin) context.go('/admin');
                     break;
                 }

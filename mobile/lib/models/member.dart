@@ -39,7 +39,7 @@ class Member {
   }
 
   bool get isAdmin => role == 'admin';
-  bool get isCoach => role == 'coach' || role == 'admin';
+  bool get isCoach => role == 'coach';
 
   factory Member.fromJson(Map<String, dynamic> json) {
     return Member(
