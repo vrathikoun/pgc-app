@@ -23,7 +23,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # restreindre en production
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://localhost:5173",
+        "http://localhost:58518",
+        "https://app.polograpplingclub.com",
+        "https://polograpplingclub.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
