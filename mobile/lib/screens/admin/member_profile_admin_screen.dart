@@ -366,30 +366,6 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
             ),
           ]),
 
-          const SizedBox(height: 20),
-
-          _Section(title: 'Statut abonnement', children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.card_membership,
-                    color: AppColors.gold,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    _subLabel(member.subscriptionStatus),
-                    style: const TextStyle(
-                      color: AppColors.text,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ]),
 
           const SizedBox(height: 32),
 
@@ -408,15 +384,7 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
     );
   }
 
-  String _subLabel(String s) =>
-      const {
-        'active': '✅ Actif',
-        'inactive': '❌ Inactif',
-        'trial': '🎁 Période d\'essai',
-        'suspended': '⚠️ Suspendu',
-      }[s] ??
-      s;
-}
+
 
 class _Section extends StatelessWidget {
   final String title;

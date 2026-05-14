@@ -1,0 +1,11 @@
+[
+  {
+    "origin": [
+      "https://app.polograpplingclub.com",
+      "https://polograpplingclub.com"
+    ],
+    "method": ["GET", "HEAD", "PUT", "POST", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Authorization"],
+    "maxAgeSeconds": 3600
+  }
+]
