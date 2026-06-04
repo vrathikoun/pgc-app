@@ -2,25 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
-import 'package:pgc_app/screens/academy/academy_screen.dart';
+import 'package:pgc_app/models/academy_video.dart';
 import 'package:pgc_app/theme/app_theme.dart';
 
 class AcademySectionScreen extends StatelessWidget {
   final String section;
+  final List<AcademyVideo> videos;
 
   const AcademySectionScreen({
     super.key,
     required this.section,
+    required this.videos,
   });
-
-  List<AcademyVideo> get _videos {
-    return academyVideos.where((v) => v.section == section).toList();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final videos = _videos;
-
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -63,9 +59,7 @@ class AcademySectionScreen extends StatelessWidget {
                 style: TextStyle(color: AppColors.muted),
               )
             else
-              ...videos.map(
-                (video) => _AcademyVideoCard(video: video),
-              ),
+              ...videos.map((video) => _AcademyVideoCard(video: video)),
           ],
         ),
       ),
@@ -76,14 +70,11 @@ class AcademySectionScreen extends StatelessWidget {
 class _AcademyVideoCard extends StatelessWidget {
   final AcademyVideo video;
 
-  const _AcademyVideoCard({
-    required this.video,
-  });
+  const _AcademyVideoCard({required this.video});
 
   @override
   Widget build(BuildContext context) {
-    final thumbnail =
-        'https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg';
+    final thumbnail = 'https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg';
 
     return GestureDetector(
       onTap: () {
@@ -127,11 +118,7 @@ class _AcademyVideoCard extends StatelessWidget {
                     color: AppColors.gold,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.play_arrow,
-                    color: Colors.black,
-                    size: 34,
-                  ),
+                  child: const Icon(Icons.play_arrow, color: Colors.black, size: 34),
                 ),
               ],
             ),
@@ -148,15 +135,17 @@ class _AcademyVideoCard extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    video.description,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 13,
-                      height: 1.35,
+                  if (video.description != null && video.description!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      video.description!,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -170,14 +159,10 @@ class _AcademyVideoCard extends StatelessWidget {
 class AcademyVideoPlayerScreen extends StatefulWidget {
   final AcademyVideo video;
 
-  const AcademyVideoPlayerScreen({
-    super.key,
-    required this.video,
-  });
+  const AcademyVideoPlayerScreen({super.key, required this.video});
 
   @override
-  State<AcademyVideoPlayerScreen> createState() =>
-      _AcademyVideoPlayerScreenState();
+  State<AcademyVideoPlayerScreen> createState() => _AcademyVideoPlayerScreenState();
 }
 
 class _AcademyVideoPlayerScreenState extends State<AcademyVideoPlayerScreen> {
@@ -186,7 +171,6 @@ class _AcademyVideoPlayerScreenState extends State<AcademyVideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
-
     _controller = YoutubePlayerController(
       initialVideoId: widget.video.youtubeId,
       flags: const YoutubePlayerFlags(
@@ -247,15 +231,17 @@ class _AcademyVideoPlayerScreenState extends State<AcademyVideoPlayerScreen> {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                widget.video.description,
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 15,
-                  height: 1.4,
+              if (widget.video.description != null && widget.video.description!.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  widget.video.description!,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         );

@@ -5,7 +5,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.database import Base, engine
-from app.routers import auth, members, courses, bookings, subscriptions
+from app.models import academy_video  # noqa: F401 — force table creation
+from app.routers import auth, members, courses, bookings, subscriptions, academy
 
 # Crée toutes les tables au démarrage
 Base.metadata.create_all(bind=engine)
@@ -44,6 +45,7 @@ app.include_router(members.router)
 app.include_router(courses.router)
 app.include_router(bookings.router)
 app.include_router(subscriptions.router)
+app.include_router(academy.router)
 
 
 @app.get("/", tags=["Health"])

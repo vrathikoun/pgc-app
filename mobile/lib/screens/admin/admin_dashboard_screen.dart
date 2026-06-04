@@ -41,6 +41,13 @@ class AdminDashboardScreen extends StatelessWidget {
               subtitle: 'Passe un membre en coach ou admin.',
               onTap: () => context.go('/admin/members'),
             ),
+            const SizedBox(height: 14),
+            PgcAdminCard(
+              icon: Icons.video_library_outlined,
+              title: 'Vidéos Academy',
+              subtitle: 'Ajoute, modifie ou supprime les vidéos techniques.',
+              onTap: () => context.go('/admin/academy'),
+            ),
           ],
         ),
       ),

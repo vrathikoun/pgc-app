@@ -18,6 +18,7 @@ import 'package:pgc_app/screens/admin/admin_dashboard_screen.dart';
 import 'package:pgc_app/screens/admin/course_form_screen.dart';
 import 'package:pgc_app/screens/admin/member_admin_screen.dart';
 import 'package:pgc_app/screens/admin/member_profile_admin_screen.dart';
+import 'package:pgc_app/screens/admin/academy_admin_screen.dart';
 import 'package:pgc_app/screens/admin/schedule_admin_screen.dart';
 import 'package:pgc_app/theme/app_theme.dart';
 
@@ -111,6 +112,7 @@ class PgcApp extends StatelessWidget {
               path: '/academy/:section',
               builder: (_, state) => AcademySectionScreen(
                 section: Uri.decodeComponent(state.pathParameters['section']!),
+                videos: state.extra is List ? List.from(state.extra as List) : [],
               ),
             ),
 
@@ -159,6 +161,11 @@ class PgcApp extends StatelessWidget {
               builder: (_, state) => MemberProfileAdminScreen(
                 memberId: int.parse(state.pathParameters['id']!),
               ),
+            ),
+
+            GoRoute(
+              path: '/admin/academy',
+              builder: (_, __) => const AcademyAdminScreen(),
             ),
           ],
         ),

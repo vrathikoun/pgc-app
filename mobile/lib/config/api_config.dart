@@ -11,4 +11,5 @@ class ApiConfig {
   static const String courses = '$baseUrl/courses/';
   static const String bookings = '$baseUrl/bookings/';
   static const String myBookings = '$baseUrl/bookings/me';
+  static const String academyVideos = '$baseUrl/academy/videos';
 }

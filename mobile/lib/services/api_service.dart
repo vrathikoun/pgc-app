@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:pgc_app/config/api_config.dart';
+import 'package:pgc_app/models/academy_video.dart';
 import 'package:pgc_app/models/booking.dart';
 import 'package:pgc_app/models/course.dart';
 import 'package:pgc_app/models/member.dart';
@@ -494,6 +495,79 @@ class ApiService {
     }
 
     return Booking.fromJson(data);
+  }
+
+  Future<List<AcademyVideo>> getAcademyVideos() async {
+    final res = await http.get(
+      Uri.parse(ApiConfig.academyVideos),
+      headers: _headers,
+    );
+
+    _checkStatus(res);
+
+    final data = _parseBody(res);
+    if (data is! List) return [];
+
+    return data.map((e) => AcademyVideo.fromJson(e)).toList();
+  }
+
+  Future<AcademyVideo> createAcademyVideo({
+    required String title,
+    required String section,
+    required String youtubeId,
+    String? description,
+    int sortOrder = 0,
+  }) async {
+    final res = await http.post(
+      Uri.parse(ApiConfig.academyVideos),
+      headers: _headers,
+      body: jsonEncode({
+        'title': title,
+        'section': section,
+        'youtube_id': youtubeId,
+        'description': description,
+        'sort_order': sortOrder,
+      }),
+    );
+
+    _checkStatus(res);
+
+    return AcademyVideo.fromJson(_parseBody(res));
+  }
+
+  Future<AcademyVideo> updateAcademyVideo(
+    int videoId, {
+    String? title,
+    String? section,
+    String? youtubeId,
+    String? description,
+    int? sortOrder,
+  }) async {
+    final body = <String, dynamic>{};
+    if (title != null) body['title'] = title;
+    if (section != null) body['section'] = section;
+    if (youtubeId != null) body['youtube_id'] = youtubeId;
+    if (description != null) body['description'] = description;
+    if (sortOrder != null) body['sort_order'] = sortOrder;
+
+    final res = await http.put(
+      Uri.parse('${ApiConfig.academyVideos}/$videoId'),
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+
+    _checkStatus(res);
+
+    return AcademyVideo.fromJson(_parseBody(res));
+  }
+
+  Future<void> deleteAcademyVideo(int videoId) async {
+    final res = await http.delete(
+      Uri.parse('${ApiConfig.academyVideos}/$videoId'),
+      headers: _headers,
+    );
+
+    _checkStatus(res);
   }
 
   Future<List<Member>> getCourseBookings(int courseId) async {
