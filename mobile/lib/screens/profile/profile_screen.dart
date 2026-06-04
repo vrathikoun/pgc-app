@@ -120,8 +120,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _InfoRow(
                   icon: Icons.card_membership,
                   label: 'Abonnement',
-                  value: _subLabel(member.subscriptionStatus),
-                  valueColor: _subColor(member.subscriptionStatus),
+                  value: _subLabel(member.subscriptionPlan),
+                  valueColor: _subColor(member.subscriptionPlan),
                 ),
                 _Sep(),
                 _InfoRow(

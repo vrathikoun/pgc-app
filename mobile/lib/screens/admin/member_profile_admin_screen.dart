@@ -383,8 +383,7 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
       ),
     );
   }
-
-
+}
 
 class _Section extends StatelessWidget {
   final String title;
