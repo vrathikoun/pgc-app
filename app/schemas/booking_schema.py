@@ -21,4 +21,7 @@ class BookingOut(BaseModel):
     cancelled_at: Optional[datetime]
     course: Optional[CourseOut] = None
 
+    # Position dans la liste d'attente (1 = prochain à être promu). null si non en attente.
+    waitlist_position: Optional[int] = None
+
     model_config = {"from_attributes": True}

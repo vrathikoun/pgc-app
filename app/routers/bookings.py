@@ -12,9 +12,27 @@ from app.routers.members import get_current_member, require_admin
 from app.schemas.booking_schema import BookingCreate, BookingOut
 from app.schemas.course_schema import CourseOut
 from app.schemas.member_schema import MemberOut
-from app.services import email_service
+from app.services import email_service, notification_service, waitlist_service
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
+
+
+def _waitlist_position(booking: Booking, db: Session) -> int | None:
+    """Rang du membre dans la liste d'attente du cours (1 = prochain promu)."""
+    if booking.status != BookingStatus.waitlist:
+        return None
+
+    ahead = (
+        db.query(Booking)
+        .filter(
+            Booking.course_id == booking.course_id,
+            Booking.status == BookingStatus.waitlist,
+            (Booking.booked_at < booking.booked_at)
+            | ((Booking.booked_at == booking.booked_at) & (Booking.id < booking.id)),
+        )
+        .count()
+    )
+    return ahead + 1
 
 
 def _confirmed_count(course_id: int, db: Session) -> int:
@@ -55,6 +73,7 @@ def _enrich_course(course: Course | None, db: Session) -> CourseOut | None:
 def _enrich_booking(booking: Booking, db: Session) -> BookingOut:
     out = BookingOut.model_validate(booking)
     out.course = _enrich_course(booking.course, db)
+    out.waitlist_position = _waitlist_position(booking, db)
     return out
 
 
@@ -142,12 +161,16 @@ def create_booking(
     db.commit()
     db.refresh(booking)
 
-    email_service.send_booking_confirmation(
-        first_name=current.first_name,
-        email=current.email,
-        course_name=course.name,
-        start_time=course.start_time.strftime("%d/%m/%Y à %H:%M"),
-    )
+    if status == BookingStatus.waitlist:
+        position = _waitlist_position(booking, db)
+        notification_service.notify_waitlist_joined(db, current, course, position or 1)
+    else:
+        email_service.send_booking_confirmation(
+            first_name=current.first_name,
+            email=current.email,
+            course_name=course.name,
+            start_time=course.start_time.strftime("%d/%m/%Y à %H:%M"),
+        )
     return _enrich_booking(booking, db)
 
 
@@ -179,26 +202,9 @@ def cancel_booking(
         course_name=booking.course.name,
     )
 
-    next_waiting = (
-        db.query(Booking)
-        .filter(
-            Booking.course_id == booking.course_id,
-            Booking.status == BookingStatus.waitlist,
-        )
-        .order_by(Booking.booked_at)
-        .first()
-    )
-    if next_waiting:
-        next_waiting.status = BookingStatus.confirmed
-        db.commit()
-        promoted_member = db.query(Member).filter(Member.id == next_waiting.member_id).first()
-        if promoted_member:
-            email_service.send_waitlist_promoted(
-                first_name=promoted_member.first_name,
-                email=promoted_member.email,
-                course_name=booking.course.name,
-                start_time=booking.course.start_time.strftime("%d/%m/%Y à %H:%M"),
-            )
+    # Une place s'est libérée → promeut le(s) premier(s) de la liste d'attente.
+    if booking.course:
+        waitlist_service.promote_waitlist(booking.course, db)
 
     db.refresh(booking)
     return _enrich_booking(booking, db)

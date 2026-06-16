@@ -9,6 +9,7 @@ class Booking {
   final DateTime bookedAt;
   final DateTime? cancelledAt;
   final Course? course;
+  final int? waitlistPosition;
 
   Booking({
     required this.id,
@@ -19,6 +20,7 @@ class Booking {
     required this.bookedAt,
     this.cancelledAt,
     this.course,
+    this.waitlistPosition,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) => Booking(
@@ -32,6 +34,7 @@ class Booking {
             ? DateTime.parse(json['cancelled_at']).toLocal()
             : null,
         course: json['course'] != null ? Course.fromJson(json['course']) : null,
+        waitlistPosition: json['waitlist_position'],
       );
 
   bool get isConfirmed => status == 'confirmed';
@@ -45,6 +48,9 @@ class Booking {
   }
 
   String get statusLabel {
+    if (isWaitlist && waitlistPosition != null) {
+      return '⏳ Liste d\'attente • n°$waitlistPosition';
+    }
     const labels = {
       'confirmed': '✅ Confirmé',
       'waitlist': '⏳ Liste d\'attente',

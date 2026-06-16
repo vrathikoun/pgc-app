@@ -12,8 +12,31 @@ from app.models.member import Member
 from app.routers.members import get_current_member, require_admin
 from app.schemas.course_schema import CourseCreate, CourseOut, CourseUpdate
 from app.schemas.member_schema import MemberOut
+from app.services import notification_service, waitlist_service
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
+
+
+def _coach_name(coach_id: Optional[int], db: Session) -> str:
+    if coach_id is None:
+        return "aucun coach"
+    coach = db.query(Member).filter(Member.id == coach_id).first()
+    if not coach:
+        return "coach inconnu"
+    return f"{coach.first_name} {coach.last_name}".strip()
+
+
+def _snapshot_affected(course_ids, db) -> list[tuple]:
+    """Collecte (membres, nom, horaire) AVANT suppression, pour notifier ensuite."""
+    snapshots = []
+    for cid in course_ids:
+        course = db.query(Course).filter(Course.id == cid).first()
+        if not course:
+            continue
+        members = notification_service.active_members_for_course(cid, db)
+        if members:
+            snapshots.append((members, course.name, course.start_time))
+    return snapshots
 
 
 class BulkCourseDeleteRequest(BaseModel):
@@ -111,6 +134,8 @@ def bulk_delete_courses(
     if not course_ids_to_delete:
         raise HTTPException(status_code=400, detail="Aucun cours à supprimer")
 
+    snapshots = _snapshot_affected(course_ids_to_delete, db)
+
     db.query(Booking).filter(Booking.course_id.in_(course_ids_to_delete)).delete(
         synchronize_session=False
     )
@@ -122,6 +147,9 @@ def bulk_delete_courses(
     )
 
     db.commit()
+
+    for members, name, start in snapshots:
+        notification_service.notify_course_cancelled(db, members, name, start)
 
     return {
         "deleted_count": deleted_count,
@@ -165,11 +193,43 @@ def update_course(
     if not course:
         raise HTTPException(status_code=404, detail="Cours introuvable")
 
-    for field, value in data.model_dump(exclude_none=True).items():
+    updates = data.model_dump(exclude_none=True)
+    old_capacity = course.max_capacity
+
+    # Détecte les changements notables AVANT de les appliquer, pour prévenir
+    # les membres inscrits (coach, horaire, lieu/nom du cours…).
+    changes: list[str] = []
+    if "coach_id" in updates and updates["coach_id"] != course.coach_id:
+        changes.append(
+            f"Coach : {_coach_name(course.coach_id, db)} → "
+            f"{_coach_name(updates['coach_id'], db)}"
+        )
+    if "start_time" in updates and updates["start_time"] != course.start_time:
+        changes.append(
+            f"Horaire : {course.start_time.strftime('%d/%m/%Y à %H:%M')} → "
+            f"{updates['start_time'].strftime('%d/%m/%Y à %H:%M')}"
+        )
+    if "name" in updates and updates["name"] != course.name:
+        changes.append(f"Nom : {course.name} → {updates['name']}")
+    if "level" in updates and updates["level"] != course.level:
+        changes.append(f"Niveau modifié : {updates['level'].value}")
+    if "course_type" in updates and updates["course_type"] != course.course_type:
+        changes.append(f"Type modifié : {updates['course_type'].value}")
+
+    for field, value in updates.items():
         setattr(course, field, value)
 
     db.commit()
     db.refresh(course)
+
+    if changes:
+        notification_service.notify_course_changed(db, course, changes)
+
+    # Si la capacité augmente, N places se libèrent → promotion auto des premiers
+    # de la liste d'attente (chacun notifié + invité à annuler si indisponible).
+    if "max_capacity" in updates and course.max_capacity > old_capacity:
+        waitlist_service.promote_waitlist(course, db)
+
     return _enrich(course, db)
 
 
@@ -183,11 +243,20 @@ def delete_course(
     if not course:
         raise HTTPException(status_code=404, detail="Cours introuvable")
 
+    # Collecte les inscrits avant suppression pour pouvoir les prévenir.
+    affected_members = notification_service.active_members_for_course(course_id, db)
+    course_name = course.name
+    course_start = course.start_time
+
     db.query(Booking).filter(Booking.course_id == course_id).delete(
         synchronize_session=False
     )
     db.delete(course)
     db.commit()
+
+    notification_service.notify_course_cancelled(
+        db, affected_members, course_name, course_start
+    )
     return None
 
 @router.delete("/{course_id}/series")
@@ -201,12 +270,14 @@ def delete_course_series(
     if not course:
         raise HTTPException(status_code=404, detail="Cours introuvable")
 
-    if mode == "single" or not course.recurrence_group_id:
+    # NOTE : la colonne `recurrence_group_id` n'existe pas encore dans le modèle.
+    # On utilise getattr pour ne pas planter et on retombe sur la suppression simple.
+    group_id = getattr(course, "recurrence_group_id", None)
+
+    if mode == "single" or not group_id:
         ids = [course.id]
     else:
-        q = db.query(Course).filter(
-            Course.recurrence_group_id == course.recurrence_group_id
-        )
+        q = db.query(Course).filter(Course.recurrence_group_id == group_id)
 
         if mode == "following":
             q = q.filter(Course.start_time >= course.start_time)
@@ -215,6 +286,8 @@ def delete_course_series(
 
         ids = [c.id for c in q.all()]
 
+    snapshots = _snapshot_affected(ids, db)
+
     db.query(Booking).filter(Booking.course_id.in_(ids)).delete(
         synchronize_session=False
     )
@@ -222,5 +295,8 @@ def delete_course_series(
         synchronize_session=False
     )
     db.commit()
+
+    for members, name, start in snapshots:
+        notification_service.notify_course_cancelled(db, members, name, start)
 
     return {"deleted_count": deleted, "deleted_course_ids": ids}

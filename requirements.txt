@@ -12,3 +12,4 @@ pydantic[email]==2.7.1
 pydantic-settings==2.2.1
 stripe==9.9.0
 google-cloud-storage
+firebase-admin==6.5.0

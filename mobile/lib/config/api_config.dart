@@ -12,4 +12,6 @@ class ApiConfig {
   static const String bookings = '$baseUrl/bookings/';
   static const String myBookings = '$baseUrl/bookings/me';
   static const String academyVideos = '$baseUrl/academy/videos';
+
+  static const String deviceToken = '$baseUrl/notifications/device-token';
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pgc_app/models/member.dart';
 import 'package:pgc_app/services/api_service.dart';
+import 'package:pgc_app/services/push_notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   static const _tokenKey = 'jwt_token';
@@ -32,6 +33,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _member = await ApiService(token: saved).getMe();
       notifyListeners();
+      PushNotificationService.registerForUser(api);
     } catch (_) {
       await logout();
     }
@@ -63,6 +65,7 @@ class AuthProvider extends ChangeNotifier {
         await _storage.delete(key: _tokenKey);
       }
 
+      PushNotificationService.registerForUser(api);
       return true;
     } on ApiException catch (e) {
       _error = e.message;
@@ -113,6 +116,10 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // Retire le token push de ce compte tant qu'on a encore le JWT.
+    if (_token != null) {
+      await PushNotificationService.unregister(api);
+    }
     _token = null;
     _member = null;
     await _storage.delete(key: _tokenKey);
