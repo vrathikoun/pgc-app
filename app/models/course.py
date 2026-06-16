@@ -45,5 +45,8 @@ class Course(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Rappel 24h : horodatage de l'envoi du rappel pour ce cours (évite les doublons).
+    reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
+
     # Relations
     bookings = relationship("Booking", back_populates="course")

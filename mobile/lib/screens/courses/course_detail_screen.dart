@@ -56,7 +56,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       final booking = await context.read<AuthProvider>().api.createBooking(widget.courseId);
       setState(() {
         _successMessage = booking.isWaitlist
-            ? 'Cours complet — tu es en liste d’attente ⏳'
+            ? 'Cours complet — tu es n°${booking.waitlistPosition ?? '?'} en liste d’attente ⏳'
             : 'Réservation confirmée ✅';
       });
       await _loadCourse();

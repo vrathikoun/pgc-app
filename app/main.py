@@ -4,12 +4,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.database import Base, engine
+from app.database import Base, engine, run_lightweight_migrations
 from app.models import academy_video  # noqa: F401 — force table creation
-from app.routers import auth, members, courses, bookings, subscriptions, academy
+from app.models import device_token  # noqa: F401 — force table creation
+from app.routers import (
+    auth,
+    members,
+    courses,
+    bookings,
+    subscriptions,
+    academy,
+    notifications,
+    tasks,
+)
 
-# Crée toutes les tables au démarrage
+# Crée toutes les tables au démarrage, puis applique les petites migrations.
 Base.metadata.create_all(bind=engine)
+run_lightweight_migrations()
 
 # Dossier uploads
 Path("uploads/avatars").mkdir(parents=True, exist_ok=True)
@@ -46,6 +57,8 @@ app.include_router(courses.router)
 app.include_router(bookings.router)
 app.include_router(subscriptions.router)
 app.include_router(academy.router)
+app.include_router(notifications.router)
+app.include_router(tasks.router)
 
 
 @app.get("/", tags=["Health"])

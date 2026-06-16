@@ -84,10 +84,12 @@ pgc_app/
 │   │   └── security.py           ← bcrypt hashing + JWT creation/decoding
 │   │
 │   ├── models/                   ← PostgreSQL tables (SQLAlchemy)
-│   │   ├── member.py             ← Members, roles, subscription status
+│   │   ├── member.py             ← Members, roles, belt rank, plan, subscription status
 │   │   ├── course.py             ← Classes (type, level, schedule, capacity)
 │   │   ├── booking.py            ← Bookings + waitlist
-│   │   └── subscription.py       ← Stripe subscriptions
+│   │   ├── subscription.py       ← Stripe subscriptions
+│   │   ├── academy_video.py      ← Academy training videos
+│   │   └── device_token.py       ← Device FCM tokens (push)
 │   │
 │   ├── schemas/                  ← API contracts (Pydantic)
 │   │   ├── member_schema.py      ← MemberCreate, MemberOut, LoginRequest, TokenOut
@@ -97,14 +99,20 @@ pgc_app/
 │   │
 │   ├── routers/                  ← API endpoints
 │   │   ├── auth.py               ← POST /auth/register, /auth/login, /auth/token
-│   │   ├── members.py            ← GET/PUT /members/me, admin CRUD
-│   │   ├── courses.py            ← Course CRUD + available spots
+│   │   ├── members.py            ← GET/PUT /members/me, admin CRUD, avatars
+│   │   ├── courses.py            ← Course CRUD + available spots + change notifications
 │   │   ├── bookings.py           ← Booking, cancellation, waitlist
-│   │   └── subscriptions.py      ← Subscriptions + Stripe webhook
+│   │   ├── subscriptions.py      ← Subscriptions + Stripe webhook
+│   │   ├── academy.py            ← Training videos (admin-managed)
+│   │   ├── notifications.py      ← Register/unregister device FCM tokens
+│   │   └── tasks.py              ← Cron tasks (24h reminders)
 │   │
 │   └── services/                 ← Isolated business logic
 │       ├── stripe_service.py     ← Subscription creation/cancellation, webhook
-│       └── email_service.py      ← Transactional emails (SMTP)
+│       ├── email_service.py      ← Transactional emails (SMTP)
+│       ├── push_service.py       ← FCM push (Firebase Admin SDK)
+│       ├── notification_service.py ← Orchestrates push + email to booked members
+│       └── storage_service.py    ← Google Cloud Storage (photos)
 │
 ├── mobile/                       ← Flutter app
 │   └── lib/
@@ -265,7 +273,8 @@ Full interactive documentation is available at `/docs` (Swagger UI) and `/redoc`
 Query parameters for `GET /courses/`:
 - `from_date` — start date (ISO 8601)
 - `to_date` — end date (ISO 8601)
-- `course_type` — course type (`boxing`, `mma`, `kickboxing`, `muay_thai`, `bjj`, `wrestling`, `other`)
+- `course_type` — course type (`mma`, `grappling`, `wrestling`, `other`)
+- `coach_id` — filter by coach
 
 #### Bookings
 
@@ -288,15 +297,26 @@ Query parameters for `GET /courses/`:
 | POST | `/subscriptions/webhook` | Stripe webhook | — (Stripe) |
 | GET | `/subscriptions/` | All subscriptions | 🔒 admin |
 
+#### Notifications & Tasks
+
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| POST | `/notifications/device-token` | Register this device's FCM token | 🔒 member |
+| DELETE | `/notifications/device-token` | Remove the token (on logout) | 🔒 member |
+| POST | `/tasks/send-reminders` | Send 24h reminders (called hourly by a cron) | 🔒 `X-Cron-Secret` |
+
 ### Data Models
 
 #### Member
 
 ```
 id, email, hashed_password, first_name, last_name, phone, avatar_url
+belt_rank: white | blue | purple | brown | black
 role: member | coach | admin
 is_active: bool
 subscription_status: active | inactive | trial | suspended
+subscription_plan: unlimited | two_per_week
+weekly_booking_limit: int | null   # null = unlimited
 stripe_customer_id
 created_at, updated_at
 ```
@@ -305,11 +325,12 @@ created_at, updated_at
 
 ```
 id, name, description
-course_type: boxing | mma | kickboxing | muay_thai | bjj | wrestling | other
+course_type: mma | grappling | wrestling | other
 level: beginner | intermediate | advanced | all_levels
 start_time, end_time
 max_capacity
 coach_id (FK → members)
+reminder_sent_at   # 24h reminder dedup
 created_at
 ```
 
@@ -370,21 +391,41 @@ To change pricing, edit the `PLAN_PRICES` dictionary in `stripe_service.py`.
 3. Events to listen to: `customer.subscription.updated`, `customer.subscription.deleted`
 4. Copy the `Signing secret` → paste as `STRIPE_WEBHOOK_SECRET` in your `.env`
 
-### Emails
+### Notifications (push + email)
 
-Transactional emails are sent automatically in 5 situations:
+The app notifies members through **two channels at once**: **push notifications**
+(Firebase Cloud Messaging) and **email** (SMTP). Email acts as a reliable fallback
+and reaches members even when the app is closed or uninstalled.
 
-| Event | Email sent |
-|---|---|
-| Registration | Welcome email |
-| Booking confirmed | Confirmation with date and time |
-| Booking cancelled | Cancellation confirmation |
-| Promoted from waitlist | Spot available notification |
-| Subscription activated | Confirmation with end date |
+| Event | Push | Email |
+|---|---|---|
+| Registration | — | Welcome email |
+| Booking confirmed | — | Confirmation with date and time |
+| Booking cancelled | — | Cancellation confirmation |
+| Promoted from waitlist | — | Spot available notification |
+| Subscription activated | — | Confirmation with end date |
+| **Course modified** (coach, time, name…) | ✅ | ✅ |
+| **Course cancelled / deleted** | ✅ | ✅ |
+| **24h reminder before a course** | ✅ | ✅ |
 
-In `DEBUG=True` mode, emails are logged to the terminal instead of being sent.
+Only members with an **active booking** (confirmed or waitlist) on the affected
+course are notified. The 24h reminder explicitly asks members to cancel if they
+can't attend, so the spot is freed for the waitlist.
 
-Recommended provider: **[Brevo](https://brevo.com)** — 300 free emails/day, no credit card required.
+**Architecture:**
+- Device FCM tokens are stored server-side (`device_tokens` table) and registered
+  automatically by the app at login.
+- `app/services/push_service.py` sends FCM messages; `app/services/notification_service.py`
+  orchestrates push + email. Both **degrade gracefully**: with no Firebase config
+  (or `DEBUG=True` for email), notifications are just logged, never sent — nothing crashes.
+- The 24h reminder is driven by an **hourly cron** hitting `POST /tasks/send-reminders`
+  (protected by the `X-Cron-Secret` header).
+
+> 📘 Full setup (Firebase project, APNs key, cron) is documented in
+> [`NOTIFICATIONS_SETUP.md`](NOTIFICATIONS_SETUP.md). **iOS push requires a paid Apple
+> Developer account** for APNs; Android push works with the free Firebase tier.
+
+Recommended email provider: **[Brevo](https://brevo.com)** — 300 free emails/day, no credit card required.
 
 ---
 
@@ -465,34 +506,31 @@ The JWT is stored securely via `flutter_secure_storage` (Keychain on iOS, Keysto
 
 ## Deployment
 
-### Backend (Railway)
+### Backend (Render)
 
-[Railway](https://railway.app) is the simplest way to deploy FastAPI + PostgreSQL, with a free tier to get started.
+The backend is deployed on **[Render](https://render.com)** — see [`render.yaml`](render.yaml)
+(Infrastructure as Code). It provisions the FastAPI web service **and** a managed
+PostgreSQL database in one blueprint.
+
+Live API: `https://pgc-app.onrender.com`
 
 ```bash
-# 1. Install the Railway CLI
-npm install -g @railway/cli
-
-# 2. Log in
-railway login
-
-# 3. Initialize the project
-railway init
-
-# 4. Add PostgreSQL
-railway add --database postgresql
-
-# 5. Set environment variables
-# Railway Dashboard → Variables → add all variables from .env
-
-# 6. Deploy
-railway up
+# 1. Push the repo to GitHub
+# 2. Render Dashboard → New → Blueprint → select the repo (it reads render.yaml)
+# 3. Render auto-creates the `pgc-api` web service + `pgc-db` Postgres
+# 4. Set the remaining env vars (Render → Environment):
+#    STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SMTP_*, FIREBASE_CREDENTIALS_JSON, CRON_SECRET
 ```
 
-Add a `Procfile` at the backend root:
+Start command (already in `render.yaml`):
 ```
-web: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
+
+> ⚠️ On the free tier the service sleeps after inactivity (first request takes
+> ~30–60s to wake up). For the 24h reminder cron, add a **Render Cron Job** (or any
+> external cron) hitting `POST /tasks/send-reminders` hourly — see
+> [`NOTIFICATIONS_SETUP.md`](NOTIFICATIONS_SETUP.md).
 
 ### App Store & Play Store
 
@@ -522,12 +560,16 @@ web: uvicorn app.main:app --host 0.0.0.0 --port $PORT
 - [x] Transactional emails
 - [x] Automatic waitlist promotion
 - [x] Flutter app — Login, Schedule, Booking, Profile
-- [ ] Web admin dashboard
-- [ ] Push notifications (Firebase Cloud Messaging)
+- [x] Admin dashboard (members, schedule, courses) — in-app
+- [x] Coach profiles & belt ranks
+- [x] Academy (training videos, admin-managed)
+- [x] Web build (Flutter web)
+- [x] Push notifications (FCM) — course changes + 24h reminder *(needs Firebase/APNs config)*
 - [ ] Club access QR code
 - [ ] Attendance statistics (admin)
 - [ ] Member CSV export (admin)
 - [ ] Multi-club support
+- [ ] Course recurrence groups (`recurrence_group_id`) — referenced in code, not yet in the model
 
 ---
 

@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     EMAIL_FROM: str = "polograpplingclub@gmail.com"
 
+    # Push notifications (Firebase Cloud Messaging)
+    # Colle ici le JSON complet du compte de service Firebase (sur une seule ligne).
+    # Laisser vide => les push sont simplement loguées, jamais envoyées (comme DEBUG pour les emails).
+    FIREBASE_CREDENTIALS_JSON: str = ""
+
+    # Secret protégeant l'endpoint des tâches planifiées (rappels 24h).
+    # Le cron externe doit envoyer ce secret dans l'en-tête X-Cron-Secret.
+    CRON_SECRET: str = ""
+
     class Config:
         env_file = ".env"
 

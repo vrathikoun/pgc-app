@@ -81,19 +81,95 @@ def send_booking_cancellation(first_name: str, email: str, course_name: str) -> 
     )
 
 
+def send_waitlist_joined(
+    first_name: str, email: str, course_name: str, start_time: str, position: int
+) -> None:
+    """Email confirmant l'ajout en liste d'attente, avec le numéro de position."""
+    _send(
+        to=email,
+        subject=f"Liste d'attente — {course_name}",
+        html=f"""
+        <h2>Tu es en liste d'attente ⏳</h2>
+        <p>Bonjour {first_name},</p>
+        <p>Le cours <strong>{course_name}</strong> ({start_time}) est complet.
+        Tu es <strong>n°{position}</strong> sur la liste d'attente.</p>
+        <p>Si une place se libère, tu seras inscrit(e) automatiquement et prévenu(e)
+        immédiatement.</p>
+        """,
+    )
+
+
 def send_waitlist_promoted(first_name: str, email: str, course_name: str, start_time: str) -> None:
-    """Email quand un membre passe de la liste d'attente à confirmé."""
+    """Email quand un membre passe automatiquement de la liste d'attente à confirmé."""
     _send(
         to=email,
         subject=f"Une place s'est libérée — {course_name} 🎉",
         html=f"""
         <h2>Bonne nouvelle !</h2>
         <p>Bonjour {first_name},</p>
-        <p>Une place s'est libérée et tu es maintenant <strong>inscrit(e)</strong> au cours :</p>
+        <p>Une place s'est libérée et tu es maintenant <strong>inscrit(e) automatiquement</strong> au cours :</p>
         <ul>
             <li><strong>Cours :</strong> {course_name}</li>
             <li><strong>Date :</strong> {start_time}</li>
         </ul>
+        <p><strong>Si tu ne peux finalement pas venir, pense à annuler ta réservation</strong>
+        pour laisser la place au membre suivant sur la liste.</p>
+        """,
+    )
+
+
+def send_course_updated(
+    first_name: str, email: str, course_name: str, start_time: str, changes_html: str
+) -> None:
+    """Email quand un cours sur lequel le membre est inscrit a été modifié."""
+    _send(
+        to=email,
+        subject=f"Modification — {course_name}",
+        html=f"""
+        <h2>Ton cours a été modifié ✏️</h2>
+        <p>Bonjour {first_name},</p>
+        <p>Des changements ont été apportés au cours <strong>{course_name}</strong>
+        (prévu le <strong>{start_time}</strong>) :</p>
+        <ul>{changes_html}</ul>
+        <p>Si ces changements ne te conviennent pas, pense à annuler ta réservation
+        pour libérer ta place.</p>
+        """,
+    )
+
+
+def send_course_cancelled(
+    first_name: str, email: str, course_name: str, start_time: str
+) -> None:
+    """Email quand un cours sur lequel le membre est inscrit est annulé/supprimé."""
+    _send(
+        to=email,
+        subject=f"Cours annulé — {course_name}",
+        html=f"""
+        <h2>Cours annulé ❌</h2>
+        <p>Bonjour {first_name},</p>
+        <p>Le cours <strong>{course_name}</strong> prévu le
+        <strong>{start_time}</strong> a été <strong>annulé</strong>.</p>
+        <p>Ta réservation a été automatiquement supprimée. Désolé pour la gêne,
+        on se retrouve sur un prochain créneau 💪</p>
+        """,
+    )
+
+
+def send_course_reminder(
+    first_name: str, email: str, course_name: str, start_time: str
+) -> None:
+    """Email de rappel envoyé 24h avant le cours."""
+    _send(
+        to=email,
+        subject=f"Rappel — {course_name} demain",
+        html=f"""
+        <h2>Rendez-vous demain 🥊</h2>
+        <p>Bonjour {first_name},</p>
+        <p>Petit rappel : tu es inscrit(e) au cours <strong>{course_name}</strong>
+        prévu le <strong>{start_time}</strong>.</p>
+        <p><strong>Si tu ne peux pas y assister, pense à annuler ta réservation</strong>
+        pour libérer ta place et en faire profiter un membre de la liste d'attente.</p>
+        <p>À demain sur les tatamis !</p>
         """,
     )
 

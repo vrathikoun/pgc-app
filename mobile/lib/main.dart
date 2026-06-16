@@ -6,6 +6,7 @@ import 'package:pgc_app/screens/academy/academy_screen.dart';
 import 'package:pgc_app/screens/academy/academy_section_screen.dart';
 
 import 'package:pgc_app/providers/auth_provider.dart';
+import 'package:pgc_app/services/push_notification_service.dart';
 import 'package:pgc_app/screens/auth/login_screen.dart';
 import 'package:pgc_app/screens/auth/register_screen.dart';
 import 'package:pgc_app/screens/courses/course_list_screen.dart';
@@ -25,6 +26,7 @@ import 'package:pgc_app/theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('fr_FR', null);
+  await PushNotificationService.initApp();
 
   runApp(
     ChangeNotifierProvider(

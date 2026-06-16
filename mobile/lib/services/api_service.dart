@@ -583,4 +583,23 @@ class ApiService {
 
     return data.map((e) => Member.fromJson(e)).toList();
   }
+
+  // ── Push notifications ──────────────────────────────────────────────
+  Future<void> registerDeviceToken(String token, String platform) async {
+    final res = await http.post(
+      Uri.parse(ApiConfig.deviceToken),
+      headers: _headers,
+      body: jsonEncode({'token': token, 'platform': platform}),
+    );
+    _checkStatus(res);
+  }
+
+  Future<void> unregisterDeviceToken(String token) async {
+    final res = await http.delete(
+      Uri.parse(ApiConfig.deviceToken),
+      headers: _headers,
+      body: jsonEncode({'token': token}),
+    );
+    _checkStatus(res);
+  }
 }
