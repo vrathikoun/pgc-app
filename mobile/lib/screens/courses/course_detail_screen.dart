@@ -7,6 +7,7 @@ import 'package:pgc_app/models/course.dart';
 import 'package:pgc_app/providers/auth_provider.dart';
 import 'package:pgc_app/services/api_service.dart';
 import 'package:pgc_app/theme/app_theme.dart';
+import 'package:pgc_app/utils/booking_window.dart';
 import 'package:pgc_app/widgets/pgc_avatar.dart';
 
 class CourseDetailScreen extends StatefulWidget {
@@ -99,6 +100,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
+  /// Cours réservable si dans la fenêtre semaine N / N+1 (le backend revérifie).
+  bool get _bookable =>
+      _course != null && BookingWindow.isWithinWindow(_course!.startTime);
+
   Widget _buildContent() {
     final course = _course!;
     final dateFormat = DateFormat('EEEE d MMMM yyyy', 'fr_FR');
@@ -143,20 +148,32 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           if (_successMessage != null)
             _MessageBox(text: _successMessage!, color: AppColors.green)
           else if (_error != null)
-            _MessageBox(text: _error!, color: AppColors.danger),
+            _MessageBox(text: _error!, color: AppColors.danger)
+          else if (!_bookable)
+            const _MessageBox(
+              text:
+                  'Ce cours n’est pas encore réservable : seuls les cours de la semaine en cours et de la semaine suivante sont ouverts à la réservation.',
+              color: AppColors.gold,
+            ),
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
             height: 54,
             child: ElevatedButton(
-              onPressed: _booking ? null : _book,
+              onPressed: (_booking || !_bookable) ? null : _book,
               style: ElevatedButton.styleFrom(
-                backgroundColor: course.isFull ? AppColors.surface2 : AppColors.darkGreen,
+                backgroundColor: (course.isFull || !_bookable) ? AppColors.surface2 : AppColors.darkGreen,
                 foregroundColor: AppColors.text,
+                disabledBackgroundColor: AppColors.surface2,
+                disabledForegroundColor: AppColors.muted,
               ),
               child: _booking
                   ? const CircularProgressIndicator(color: AppColors.text)
-                  : Text(course.isFull ? 'Rejoindre la liste d’attente' : 'Réserver ce cours'),
+                  : Text(
+                      !_bookable
+                          ? 'Réservation pas encore ouverte'
+                          : (course.isFull ? 'Rejoindre la liste d’attente' : 'Réserver ce cours'),
+                    ),
             ),
           ),
         ],

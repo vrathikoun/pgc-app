@@ -471,6 +471,9 @@ flutter run --release
 
 > **Important:** On an Android emulator, `localhost` points to the emulator itself, not your machine. Use `10.0.2.2` instead. Configure the URL in `lib/config/api_config.dart`.
 
+> 📱 **Testing on a physical iPhone** (free Apple ID, no paid developer account):
+> see [`mobile/TEST_IPHONE.md`](mobile/TEST_IPHONE.md) for the full step-by-step guide.
+
 ### Available Screens
 
 | Screen | File | Description |

@@ -114,6 +114,19 @@ def create_booking(
     if _as_aware_utc(course.start_time) < _now_utc():
         raise HTTPException(status_code=400, detail="Ce cours est déjà passé")
 
+    # Un membre ne peut réserver que les cours de la semaine en cours (N) et de
+    # la semaine suivante (N+1). Les semaines commencent le lundi.
+    now = _now_utc()
+    week_start = (now - timedelta(days=now.weekday())).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    booking_horizon = week_start + timedelta(days=14)  # lundi 00:00 de la semaine N+2 (exclu)
+    if _as_aware_utc(course.start_time) >= booking_horizon:
+        raise HTTPException(
+            status_code=400,
+            detail="Vous ne pouvez réserver que les cours de la semaine en cours et de la semaine suivante",
+        )
+
     existing = (
         db.query(Booking)
         .filter(

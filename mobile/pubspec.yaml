@@ -37,6 +37,10 @@ dev_dependencies:
   flutter_launcher_icons: ^0.13.1
 
 flutter:
+  # Le projet iOS est géré via CocoaPods (Podfile) — on désactive la
+  # résolution Swift Package Manager pour des builds reproductibles.
+  config:
+    enable-swift-package-manager: false
   uses-material-design: true
   assets:
     - assets/images/

@@ -7,6 +7,7 @@ import 'package:pgc_app/models/course.dart';
 import 'package:pgc_app/models/member.dart';
 import 'package:pgc_app/providers/auth_provider.dart';
 import 'package:pgc_app/theme/app_theme.dart';
+import 'package:pgc_app/utils/booking_window.dart';
 import 'package:pgc_app/widgets/pgc_avatar.dart';
 
 class CourseListScreen extends StatefulWidget {
@@ -28,7 +29,14 @@ class _CourseListScreenState extends State<CourseListScreen> {
     return DateTime(now.year, now.month, now.day);
   }
 
-  List<DateTime> get _days => List.generate(7, (i) => _today.add(Duration(days: i)));
+  /// Borne haute (exclue) : fin de la semaine suivante (N+1).
+  DateTime get _horizonEnd => BookingWindow.bookingHorizonEnd();
+
+  /// Jours réservables affichés : d'aujourd'hui jusqu'à la fin de la semaine N+1.
+  List<DateTime> get _days {
+    final count = _horizonEnd.difference(_today).inDays;
+    return List.generate(count, (i) => _today.add(Duration(days: i)));
+  }
 
   @override
   void initState() {
@@ -47,7 +55,7 @@ class _CourseListScreenState extends State<CourseListScreen> {
 
       final courses = await api.getCourses(
         fromDate: _today,
-        toDate: _today.add(const Duration(days: 7)),
+        toDate: _horizonEnd,
       );
       final coaches = await api.getCoaches();
 
@@ -99,7 +107,7 @@ class _CourseListScreenState extends State<CourseListScreen> {
               const SizedBox(height: 12),
               _CoachStrip(coaches: _coaches),
               const SizedBox(height: 28),
-              const _SectionTitle('Planning 7 jours'),
+              const _SectionTitle('Planning — semaine en cours & suivante'),
               const SizedBox(height: 12),
               _DaySelector(
                 days: _days,
