@@ -382,7 +382,7 @@ class _ScheduleCourseChip extends StatelessWidget {
     final time = DateFormat('HH:mm').format(localStart);
 
     return GestureDetector(
-      onTap: () => context.go('/courses/${course.id}'),
+      onTap: () => context.push('/courses/${course.id}'),
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 4),

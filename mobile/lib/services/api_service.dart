@@ -17,6 +17,31 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+/// Timeout réseau global. Sans lui, un appel qui n'aboutit jamais (serveur
+/// Render en cours de réveil, réseau mobile instable…) laissait l'UI avec un
+/// spinner infini. 45 s couvre le réveil d'un service Render gratuit (~30-60 s).
+const Duration kApiTimeout = Duration(seconds: 45);
+
+ApiException _timeoutError() => ApiException(
+    'Le serveur met trop de temps à répondre. Réessaie dans un instant.');
+
+class _Http {
+  static Future<http.Response> get(Uri url, {Map<String, String>? headers}) =>
+      http.get(url, headers: headers).timeout(kApiTimeout, onTimeout: () => throw _timeoutError());
+
+  static Future<http.Response> post(Uri url, {Map<String, String>? headers, Object? body}) =>
+      http.post(url, headers: headers, body: body).timeout(kApiTimeout, onTimeout: () => throw _timeoutError());
+
+  static Future<http.Response> put(Uri url, {Map<String, String>? headers, Object? body}) =>
+      http.put(url, headers: headers, body: body).timeout(kApiTimeout, onTimeout: () => throw _timeoutError());
+
+  static Future<http.Response> delete(Uri url, {Map<String, String>? headers, Object? body}) =>
+      http.delete(url, headers: headers, body: body).timeout(kApiTimeout, onTimeout: () => throw _timeoutError());
+
+  static Future<http.Response> patch(Uri url, {Map<String, String>? headers, Object? body}) =>
+      http.patch(url, headers: headers, body: body).timeout(kApiTimeout, onTimeout: () => throw _timeoutError());
+}
+
 class ApiService {
   final String? token;
 
@@ -58,7 +83,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final res = await http.post(
+    final res = await _Http.post(
       Uri.parse(ApiConfig.login),
       headers: _headers,
       body: jsonEncode({'email': email, 'password': password}),
@@ -81,7 +106,7 @@ class ApiService {
     required String lastName,
     String? phone,
   }) async {
-    final res = await http.post(
+    final res = await _Http.post(
       Uri.parse(ApiConfig.register),
       headers: _headers,
       body: jsonEncode({
@@ -104,7 +129,7 @@ class ApiService {
   }
 
   Future<Member> getMe() async {
-    final res = await http.get(
+    final res = await _Http.get(
       Uri.parse(ApiConfig.me),
       headers: _headers,
     );
@@ -125,7 +150,7 @@ class ApiService {
     String? phone,
     String? beltRank,
   }) async {
-    final res = await http.put(
+    final res = await _Http.put(
       Uri.parse(ApiConfig.me),
       headers: _headers,
       body: jsonEncode({
@@ -147,7 +172,7 @@ class ApiService {
   }
 
   Future<Member> uploadMyAvatar(String base64Image) async {
-    final res = await http.post(
+    final res = await _Http.post(
       Uri.parse(_joinUrl(ApiConfig.baseUrl, 'members/me/avatar')),
       headers: _headers,
       body: jsonEncode({'image_b64': base64Image}),
@@ -164,7 +189,7 @@ class ApiService {
   }
 
   Future<Member> uploadMemberAvatar(int memberId, String base64Image) async {
-    final res = await http.post(
+    final res = await _Http.post(
       Uri.parse(_joinUrl(ApiConfig.baseUrl, 'members/$memberId/avatar')),
       headers: _headers,
       body: jsonEncode({'image_b64': base64Image}),
@@ -181,7 +206,7 @@ class ApiService {
   }
 
   Future<List<Member>> getCoaches() async {
-    final res = await http.get(
+    final res = await _Http.get(
       Uri.parse(ApiConfig.coaches),
       headers: _headers,
     );
@@ -195,7 +220,7 @@ class ApiService {
   }
 
   Future<Member> getCoach(int coachId) async {
-    final res = await http.get(
+    final res = await _Http.get(
       Uri.parse(_joinUrl(ApiConfig.coaches, '$coachId')),
       headers: _headers,
     );
@@ -211,7 +236,7 @@ class ApiService {
   }
 
   Future<List<Course>> getCoursesByCoach(int coachId) async {
-    final res = await http.get(
+    final res = await _Http.get(
       Uri.parse(_joinUrl(ApiConfig.courses, 'by-coach/$coachId')),
       headers: _headers,
     );
@@ -230,7 +255,7 @@ class ApiService {
       'limit': '$limit',
     });
 
-    final res = await http.get(uri, headers: _headers);
+    final res = await _Http.get(uri, headers: _headers);
 
     _checkStatus(res);
 
@@ -241,7 +266,7 @@ class ApiService {
   }
 
   Future<Member> updateMemberRole(int memberId, String role) async {
-    final res = await http.patch(
+    final res = await _Http.patch(
       Uri.parse(_joinUrl(ApiConfig.members, '$memberId/role')),
       headers: _headers,
       body: jsonEncode({'role': role}),
@@ -265,7 +290,7 @@ class ApiService {
     String? beltRank,
     String? subscriptionPlan,
   }) async {
-    final res = await http.put(
+    final res = await _Http.put(
       Uri.parse(_joinUrl(ApiConfig.members, '$memberId')),
       headers: _headers,
       body: jsonEncode({
@@ -304,7 +329,7 @@ class ApiService {
 
     final uri = Uri.parse(ApiConfig.courses).replace(queryParameters: params);
 
-    final res = await http.get(uri, headers: _headers);
+    final res = await _Http.get(uri, headers: _headers);
 
     _checkStatus(res);
 
@@ -315,7 +340,7 @@ class ApiService {
   }
 
   Future<Course> getCourse(int courseId) async {
-    final res = await http.get(
+    final res = await _Http.get(
       Uri.parse(_joinUrl(ApiConfig.courses, '$courseId')),
       headers: _headers,
     );
@@ -340,7 +365,7 @@ class ApiService {
     required int maxCapacity,
     int? coachId,
   }) async {
-    final res = await http.post(
+    final res = await _Http.post(
       Uri.parse(ApiConfig.courses),
       headers: _headers,
       body: jsonEncode({
@@ -376,7 +401,7 @@ class ApiService {
     required int maxCapacity,
     int? coachId,
   }) async {
-    final res = await http.put(
+    final res = await _Http.put(
       Uri.parse(_joinUrl(ApiConfig.courses, '$courseId')),
       headers: _headers,
       body: jsonEncode({
@@ -402,7 +427,7 @@ class ApiService {
   }
 
   Future<void> deleteCourse(int courseId) async {
-    final res = await http.delete(
+    final res = await _Http.delete(
       Uri.parse(_joinUrl(ApiConfig.courses, '$courseId')),
       headers: _headers,
     );
@@ -411,7 +436,7 @@ class ApiService {
   }
 
   Future<int> bulkDeleteCourses(List<int> courseIds) async {
-    final res = await http.post(
+    final res = await _Http.post(
       Uri.parse(_joinUrl(ApiConfig.courses, 'bulk-delete')),
       headers: _headers,
       body: jsonEncode({'course_ids': courseIds}),
@@ -431,7 +456,7 @@ class ApiService {
     int courseId, {
     bool deleteFollowingOnly = true,
   }) async {
-    final res = await http.post(
+    final res = await _Http.post(
       Uri.parse(_joinUrl(ApiConfig.courses, 'bulk-delete')),
       headers: _headers,
       body: jsonEncode({
@@ -451,7 +476,7 @@ class ApiService {
   }
 
   Future<List<Booking>> getMyBookings() async {
-    final res = await http.get(
+    final res = await _Http.get(
       Uri.parse(ApiConfig.myBookings),
       headers: _headers,
     );
@@ -465,7 +490,7 @@ class ApiService {
   }
 
   Future<Booking> createBooking(int courseId) async {
-    final res = await http.post(
+    final res = await _Http.post(
       Uri.parse(ApiConfig.bookings),
       headers: _headers,
       body: jsonEncode({'course_id': courseId}),
@@ -482,7 +507,7 @@ class ApiService {
   }
 
   Future<Booking> cancelBooking(int bookingId) async {
-    final res = await http.delete(
+    final res = await _Http.delete(
       Uri.parse(_joinUrl(ApiConfig.bookings, '$bookingId')),
       headers: _headers,
     );
@@ -498,7 +523,7 @@ class ApiService {
   }
 
   Future<List<AcademyVideo>> getAcademyVideos() async {
-    final res = await http.get(
+    final res = await _Http.get(
       Uri.parse(ApiConfig.academyVideos),
       headers: _headers,
     );
@@ -518,7 +543,7 @@ class ApiService {
     String? description,
     int sortOrder = 0,
   }) async {
-    final res = await http.post(
+    final res = await _Http.post(
       Uri.parse(ApiConfig.academyVideos),
       headers: _headers,
       body: jsonEncode({
@@ -550,7 +575,7 @@ class ApiService {
     if (description != null) body['description'] = description;
     if (sortOrder != null) body['sort_order'] = sortOrder;
 
-    final res = await http.put(
+    final res = await _Http.put(
       Uri.parse('${ApiConfig.academyVideos}/$videoId'),
       headers: _headers,
       body: jsonEncode(body),
@@ -562,7 +587,7 @@ class ApiService {
   }
 
   Future<void> deleteAcademyVideo(int videoId) async {
-    final res = await http.delete(
+    final res = await _Http.delete(
       Uri.parse('${ApiConfig.academyVideos}/$videoId'),
       headers: _headers,
     );
@@ -571,7 +596,7 @@ class ApiService {
   }
 
   Future<List<Member>> getCourseBookings(int courseId) async {
-    final res = await http.get(
+    final res = await _Http.get(
       Uri.parse(_joinUrl(ApiConfig.bookings, 'course/$courseId')),
       headers: _headers,
     );
@@ -586,7 +611,7 @@ class ApiService {
 
   // ── Push notifications ──────────────────────────────────────────────
   Future<void> registerDeviceToken(String token, String platform) async {
-    final res = await http.post(
+    final res = await _Http.post(
       Uri.parse(ApiConfig.deviceToken),
       headers: _headers,
       body: jsonEncode({'token': token, 'platform': platform}),
@@ -595,7 +620,7 @@ class ApiService {
   }
 
   Future<void> unregisterDeviceToken(String token) async {
-    final res = await http.delete(
+    final res = await _Http.delete(
       Uri.parse(ApiConfig.deviceToken),
       headers: _headers,
       body: jsonEncode({'token': token}),

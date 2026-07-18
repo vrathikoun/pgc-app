@@ -164,7 +164,7 @@ class _BookingCard extends StatelessWidget {
     final hasCoachProfile = course?.coachId != null;
 
     return GestureDetector(
-      onTap: course == null ? null : () => context.go('/courses/${course.id}'),
+      onTap: course == null ? null : () => context.push('/courses/${course.id}'),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
@@ -221,7 +221,7 @@ class _BookingCard extends StatelessWidget {
             InkWell(
               borderRadius: BorderRadius.circular(18),
               onTap: hasCoachProfile
-                  ? () => context.go('/coach/${course!.coachId}')
+                  ? () => context.push('/coaches/${course!.coachId}')
                   : null,
               child: Row(
                 children: [

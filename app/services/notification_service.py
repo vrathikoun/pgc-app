@@ -13,6 +13,7 @@ from typing import List, Sequence
 
 from sqlalchemy.orm import Session
 
+from app.core.timezone import fmt_paris
 from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
 from app.models.device_token import DeviceToken
@@ -21,7 +22,7 @@ from app.services import email_service, push_service
 
 
 def _fmt(dt: datetime) -> str:
-    return dt.strftime("%d/%m/%Y à %H:%M")
+    return fmt_paris(dt)
 
 
 def active_members_for_course(course_id: int, db: Session) -> List[Member]:
@@ -153,7 +154,7 @@ def send_course_reminder(db: Session, members: Sequence[Member], course: Course)
         members,
         title=f"Rappel : {course.name} demain",
         body=(
-            f"Cours demain à {course.start_time.strftime('%H:%M')}. "
+            f"Cours demain à {fmt_paris(course.start_time, '%H:%M')}. "
             "Si tu ne peux pas venir, pense à annuler pour libérer ta place."
         ),
         data={"type": "course_reminder", "course_id": course.id},

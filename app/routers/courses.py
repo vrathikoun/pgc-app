@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.timezone import as_paris, as_utc, fmt_paris
 from app.database import get_db
 from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
@@ -85,9 +86,9 @@ def list_courses(
 ):
     q = db.query(Course)
     if from_date:
-        q = q.filter(Course.start_time >= from_date)
+        q = q.filter(Course.start_time >= as_utc(from_date))
     if to_date:
-        q = q.filter(Course.start_time <= to_date)
+        q = q.filter(Course.start_time <= as_utc(to_date))
     if course_type:
         q = q.filter(Course.course_type == course_type)
     if coach_id:
@@ -124,9 +125,11 @@ def bulk_delete_courses(
         candidates = q.all()
 
         for course in candidates:
-            same_weekday = course.start_time.weekday() == ref.start_time.weekday()
-            same_hour = course.start_time.hour == ref.start_time.hour
-            same_minute = course.start_time.minute == ref.start_time.minute
+            # Compare les créneaux en heure de Paris (jour/heure « mur » du club).
+            c_start, r_start = as_paris(course.start_time), as_paris(ref.start_time)
+            same_weekday = c_start.weekday() == r_start.weekday()
+            same_hour = c_start.hour == r_start.hour
+            same_minute = c_start.minute == r_start.minute
 
             if same_weekday and same_hour and same_minute:
                 course_ids_to_delete.add(course.id)
@@ -175,7 +178,11 @@ def create_course(
     _admin: Member = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    course = Course(**data.model_dump())
+    payload = data.model_dump()
+    # Normalise en UTC (les heures naïves envoyées par l'app = heure de Paris).
+    payload["start_time"] = as_utc(payload["start_time"])
+    payload["end_time"] = as_utc(payload["end_time"])
+    course = Course(**payload)
     db.add(course)
     db.commit()
     db.refresh(course)
@@ -194,6 +201,10 @@ def update_course(
         raise HTTPException(status_code=404, detail="Cours introuvable")
 
     updates = data.model_dump(exclude_none=True)
+    # Normalise en UTC (les heures naïves envoyées par l'app = heure de Paris).
+    for key in ("start_time", "end_time"):
+        if key in updates:
+            updates[key] = as_utc(updates[key])
     old_capacity = course.max_capacity
 
     # Détecte les changements notables AVANT de les appliquer, pour prévenir
@@ -204,10 +215,10 @@ def update_course(
             f"Coach : {_coach_name(course.coach_id, db)} → "
             f"{_coach_name(updates['coach_id'], db)}"
         )
-    if "start_time" in updates and updates["start_time"] != course.start_time:
+    if "start_time" in updates and as_utc(updates["start_time"]) != as_utc(course.start_time):
         changes.append(
-            f"Horaire : {course.start_time.strftime('%d/%m/%Y à %H:%M')} → "
-            f"{updates['start_time'].strftime('%d/%m/%Y à %H:%M')}"
+            f"Horaire : {fmt_paris(course.start_time)} → "
+            f"{fmt_paris(updates['start_time'])}"
         )
     if "name" in updates and updates["name"] != course.name:
         changes.append(f"Nom : {course.name} → {updates['name']}")

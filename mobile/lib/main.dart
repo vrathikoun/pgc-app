@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
@@ -191,96 +192,63 @@ class MainShell extends StatelessWidget {
     required this.child,
   });
 
-  int _selectedIndex(BuildContext context, bool isAdmin) {
-    final location = GoRouterState.of(context).matchedLocation;
-
-    int _selectedIndex(BuildContext context, bool isAdmin) {
-  final location = GoRouterState.of(context).matchedLocation;
-
-  if (location.startsWith('/courses')) return 0;
-  if (location.startsWith('/schedule')) return 1;
-  if (location.startsWith('/bookings')) return 2;
-  if (location.startsWith('/profile')) return 3;
-  if (location.startsWith('/academy')) return 4;
-  if (isAdmin && location.startsWith('/admin')) return 5;
-
-  return 0;
-}
-
-    return 0;
-  }
-
   @override
   Widget build(BuildContext context) {
     final isAdmin = context.watch<AuthProvider>().member?.isAdmin ?? false;
     final hasAcademyAccess = context.watch<AuthProvider>().member?.subscriptionPlan == 'unlimited';
 
-    final items = <BottomNavigationBarItem>[
-      const BottomNavigationBarItem(
-      icon: Icon(Icons.fitness_center),
-      label: 'Courses',
-    ),
-    const BottomNavigationBarItem(
-      icon: Icon(Icons.calendar_today),
-      label: 'Schedule',
-    ),
-    const BottomNavigationBarItem(
-      icon: Icon(Icons.bookmark),
-      label: 'Bookings',
-    ),
-    const BottomNavigationBarItem(
-      icon: Icon(Icons.person),
-      label: 'Profile',
-    ),
-    if (hasAcademyAccess)
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.school),
-        label: 'Academy',
-      ),
-    if (isAdmin)
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.admin_panel_settings),
-        label: 'Admin',
-      ),
+    // Onglets et routes construits ensemble : les index restent alignés même
+    // quand Academy ou Admin sont masqués.
+    final tabs = <_NavItem>[
+      _NavItem(Icons.fitness_center, 'Courses', '/courses'),
+      _NavItem(Icons.calendar_today, 'Schedule', '/schedule'),
+      _NavItem(Icons.bookmark, 'Bookings', '/bookings'),
+      _NavItem(Icons.person, 'Profile', '/profile'),
+      if (hasAcademyAccess) _NavItem(Icons.school, 'Academy', '/academy'),
+      if (isAdmin) _NavItem(Icons.admin_panel_settings, 'Admin', '/admin'),
     ];
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BottomNavigationBar(
-              backgroundColor: AppColors.surface,
-              selectedItemColor: AppColors.gold,
-              unselectedItemColor: AppColors.muted,
-              type: BottomNavigationBarType.fixed,
-              currentIndex: _selectedIndex(context, isAdmin),
-              onTap: (i) {
-                switch (i) {
-                  case 0:
-                    context.go('/courses');
-                    break;
-                  case 1:
-                    context.go('/schedule');
-                    break;
-                  case 2:
-                    context.go('/bookings');
-                    break;
-                  case 3:
-                    context.go('/profile');
-                    break;
-                    case 4:
-                      context.go('/academy');
-                      break;
-                  case 5:
-                    if (isAdmin) context.go('/admin');
-                    break;
-                }
-              },
-              items: items,
+    final location = GoRouterState.of(context).matchedLocation;
+    var selectedIndex = tabs.indexWhere((t) => location.startsWith(t.route));
+    if (selectedIndex < 0) selectedIndex = 0;
+
+    return PopScope(
+      // On intercepte toujours le retour système (bouton/geste Android) :
+      // 1. un écran est empilé → on dépile ;
+      // 2. on est sur un onglet ≠ accueil → retour à l'accueil ;
+      // 3. on est sur l'accueil → on laisse l'app se fermer.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final router = GoRouter.of(context);
+        if (router.canPop()) {
+          router.pop();
+        } else if (GoRouterState.of(context).matchedLocation != '/courses') {
+          context.go('/courses');
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: child,
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: BottomNavigationBar(
+                backgroundColor: AppColors.surface,
+                selectedItemColor: AppColors.gold,
+                unselectedItemColor: AppColors.muted,
+                type: BottomNavigationBarType.fixed,
+                currentIndex: selectedIndex,
+                onTap: (i) => context.go(tabs[i].route),
+                items: [
+                  for (final tab in tabs)
+                    BottomNavigationBarItem(icon: Icon(tab.icon), label: tab.label),
+                ],
+              ),
             ),
           ),
         ),

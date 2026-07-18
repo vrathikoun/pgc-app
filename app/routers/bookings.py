@@ -1,9 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.timezone import as_utc, fmt_paris, now_utc, paris_week_start
 from app.database import get_db
 from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
@@ -77,14 +78,9 @@ def _enrich_booking(booking: Booking, db: Session) -> BookingOut:
     return out
 
 
-def _now_utc() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _as_aware_utc(dt: datetime) -> datetime:
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+# Comparaisons d'instants : voir app/core/timezone (les naïfs = heure de Paris).
+_now_utc = now_utc
+_as_aware_utc = as_utc
 
 
 @router.get("/me", response_model=List[BookingOut])
@@ -115,12 +111,8 @@ def create_booking(
         raise HTTPException(status_code=400, detail="Ce cours est déjà passé")
 
     # Un membre ne peut réserver que les cours de la semaine en cours (N) et de
-    # la semaine suivante (N+1). Les semaines commencent le lundi.
-    now = _now_utc()
-    week_start = (now - timedelta(days=now.weekday())).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
-    booking_horizon = week_start + timedelta(days=14)  # lundi 00:00 de la semaine N+2 (exclu)
+    # la semaine suivante (N+1). Semaines civiles de Paris (lundi 00:00).
+    booking_horizon = paris_week_start() + timedelta(days=14)  # lundi de N+2 (exclu)
     if _as_aware_utc(course.start_time) >= booking_horizon:
         raise HTTPException(
             status_code=400,
@@ -141,9 +133,8 @@ def create_booking(
 
     weekly_limit = getattr(current, "weekly_booking_limit", None)
     if weekly_limit is not None and weekly_limit > 0:
-        start = _as_aware_utc(course.start_time)
-        week_start = start - timedelta(days=start.weekday())
-        week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Semaine civile de Paris du cours visé.
+        week_start = paris_week_start(_as_aware_utc(course.start_time))
         week_end = week_start + timedelta(days=7)
 
         week_count = (
@@ -182,7 +173,7 @@ def create_booking(
             first_name=current.first_name,
             email=current.email,
             course_name=course.name,
-            start_time=course.start_time.strftime("%d/%m/%Y à %H:%M"),
+            start_time=fmt_paris(course.start_time),
         )
     return _enrich_booking(booking, db)
 

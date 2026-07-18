@@ -143,7 +143,7 @@ class _ScheduleAdminScreenState extends State<ScheduleAdminScreen> {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.gold,
         foregroundColor: AppColors.bg,
-        onPressed: () => context.go('/admin/courses/new'),
+        onPressed: () => context.push('/admin/courses/new'),
         icon: const Icon(Icons.add),
         label: const Text('Cours'),
       ),
@@ -277,7 +277,7 @@ class _ScheduleAdminScreenState extends State<ScheduleAdminScreen> {
                           ),
                           onPressed: isDeleting
                               ? null
-                              : () => context.go(
+                              : () => context.push(
                                     '/admin/courses/${course.id}/edit',
                                   ),
                         ),

@@ -204,7 +204,7 @@ class _CoachStrip extends StatelessWidget {
           final initials = '${coach.firstName.isNotEmpty ? coach.firstName[0] : ''}${coach.lastName.isNotEmpty ? coach.lastName[0] : ''}';
 
           return GestureDetector(
-            onTap: () => context.go('/coaches/${coach.id}'),
+            onTap: () => context.push('/coaches/${coach.id}'),
             child: SizedBox(
               width: 84,
               child: Column(
@@ -276,7 +276,7 @@ class _CourseCard extends StatelessWidget {
     final time = DateFormat('HH:mm').format(course.startTime);
 
     return GestureDetector(
-      onTap: () => context.go('/courses/${course.id}'),
+      onTap: () => context.push('/courses/${course.id}'),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(18),

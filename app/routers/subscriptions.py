@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 
+from app.core.timezone import fmt_paris
 from app.database import get_db
 from app.models.member import Member
 from app.models.subscription import Subscription, SubscriptionState
@@ -56,7 +57,7 @@ def subscribe(
 
     # Email de confirmation
     if subscription.current_period_end:
-        end_date = subscription.current_period_end.strftime("%d/%m/%Y")
+        end_date = fmt_paris(subscription.current_period_end, "%d/%m/%Y")
     else:
         end_date = "–"
 

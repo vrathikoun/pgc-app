@@ -96,7 +96,7 @@ class _AcademyScreenState extends State<AcademyScreen> {
               padding: const EdgeInsets.only(bottom: 14),
               child: InkWell(
                 borderRadius: BorderRadius.circular(24),
-                onTap: () => context.go(
+                onTap: () => context.push(
                   '/academy/${Uri.encodeComponent(section)}',
                   extra: sectionVideos,
                 ),

@@ -77,7 +77,7 @@ class _MemberAdminScreenState extends State<MemberAdminScreen> {
             if (!_loading)
               ..._members.map(
                 (m) => GestureDetector(
-                  onTap: () => context.go('/admin/members/${m.id}'),
+                  onTap: () => context.push('/admin/members/${m.id}'),
                   child: Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),

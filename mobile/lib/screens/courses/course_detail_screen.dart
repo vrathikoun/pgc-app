@@ -31,40 +31,57 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     _loadCourse();
   }
 
-  Future<void> _loadCourse() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _loadCourse({bool silent = false}) async {
+    // silent : rafraîchit les données sans blanchir l'écran (ex. après une
+    // réservation, pour que le message de succès reste visible).
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
     try {
       final course = await context.read<AuthProvider>().api.getCourse(widget.courseId);
+      if (!mounted) return;
       setState(() {
         _course = course;
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        if (!silent) _error = e.toString();
         _loading = false;
       });
     }
   }
 
   Future<void> _book() async {
-    setState(() => _booking = true);
+    setState(() {
+      _booking = true;
+      _error = null;
+      _successMessage = null;
+    });
     try {
       final booking = await context.read<AuthProvider>().api.createBooking(widget.courseId);
-      setState(() {
-        _successMessage = booking.isWaitlist
-            ? 'Cours complet — tu es n°${booking.waitlistPosition ?? '?'} en liste d’attente ⏳'
-            : 'Réservation confirmée ✅';
-      });
-      await _loadCourse();
+      if (!mounted) return;
+      final message = booking.isWaitlist
+          ? 'Cours complet — tu es n°${booking.waitlistPosition ?? '?'} en liste d’attente ⏳'
+          : 'Réservation confirmée ✅';
+      setState(() => _successMessage = message);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: booking.isWaitlist ? AppColors.gold : AppColors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      await _loadCourse(silent: true);
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _booking = false);
     }
@@ -189,7 +206,7 @@ class _CoachCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.go('/coaches/${course.coachId}'),
+      onTap: () => context.push('/coaches/${course.coachId}'),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

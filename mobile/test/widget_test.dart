@@ -1,30 +1,23 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
+// Test de fumée minimal : vérifie que la logique de fenêtre de réservation
+// (semaine N + N+1, semaines démarrant le lundi) est correcte.
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:pgc_app/main.dart';
+import 'package:pgc_app/utils/booking_window.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('fenêtre de réservation = semaine en cours + semaine suivante', () {
+    // Mercredi 15 juillet 2026 → lundi de la semaine = 13 juillet.
+    final now = DateTime(2026, 7, 15, 18, 30);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(BookingWindow.currentWeekStart(now), DateTime(2026, 7, 13));
+    // Borne exclue : lundi 27 juillet (semaine N+2).
+    expect(BookingWindow.bookingHorizonEnd(now), DateTime(2026, 7, 27));
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Dimanche de la semaine N+1 à 23h59 : réservable.
+    expect(BookingWindow.isWithinWindow(DateTime(2026, 7, 26, 23, 59), now), isTrue);
+    // Lundi de la semaine N+2 à 00h00 : refusé.
+    expect(BookingWindow.isWithinWindow(DateTime(2026, 7, 27), now), isFalse);
+    // Aujourd'hui : réservable.
+    expect(BookingWindow.isWithinWindow(DateTime(2026, 7, 15, 19), now), isTrue);
   });
 }
