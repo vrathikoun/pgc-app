@@ -1,6 +1,7 @@
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
@@ -50,6 +51,12 @@ app.add_middleware(
 
 # Servir les avatars uploadés en statique → http://localhost:8000/uploads/avatars/xxx.jpg
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+
+# Politique de confidentialité — URL publique exigée par le Play Store / App Store.
+@app.get("/privacy", include_in_schema=False)
+def privacy_policy():
+    return FileResponse(Path(__file__).parent / "static" / "privacy.html")
 
 app.include_router(auth.router)
 app.include_router(members.router)
