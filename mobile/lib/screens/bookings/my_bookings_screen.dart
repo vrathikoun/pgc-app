@@ -86,7 +86,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
           },
         ),
         title: const Text(
-          'Détail du cours',
+          'Mes réservations',
           style: TextStyle(color: AppColors.text),
         ),
       ),

@@ -90,7 +90,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
             },
           ),
           title: const Text(
-            'Détail du cours',
+            'Profil du coach',
             style: TextStyle(color: AppColors.text),
           ),
         ),

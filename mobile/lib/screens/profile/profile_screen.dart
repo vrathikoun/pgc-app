@@ -75,7 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         },
       ),
       title: const Text(
-        'Détail du cours',
+        'Mon profil',
         style: TextStyle(color: AppColors.text),
       ),
     ),

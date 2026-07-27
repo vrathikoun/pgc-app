@@ -99,7 +99,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           },
         ),
         title: const Text(
-          'Détail du cours',
+          'Planning',
           style: TextStyle(color: AppColors.text),
         ),
       ),
