@@ -58,6 +58,12 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 def privacy_policy():
     return FileResponse(Path(__file__).parent / "static" / "privacy.html")
 
+
+# Page d'assistance — URL requise par la fiche App Store Connect.
+@app.get("/support", include_in_schema=False)
+def support_page():
+    return FileResponse(Path(__file__).parent / "static" / "support.html")
+
 app.include_router(auth.router)
 app.include_router(members.router)
 app.include_router(courses.router)
