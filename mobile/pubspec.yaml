@@ -56,3 +56,6 @@ flutter_launcher_icons:
   adaptive_icon_foreground: "assets/icons/PGC_removebg.png"
 
   image_path_ios: "assets/logo_ios.png"
+  # L'App Store refuse les icônes avec canal alpha → aplatissement sur le vert PGC.
+  remove_alpha_ios: true
+  background_color_ios: "#123B1E"
