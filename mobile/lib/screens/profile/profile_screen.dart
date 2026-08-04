@@ -15,6 +15,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _uploading = false;
+  bool _deleting = false;
 
   Future<void> _onAvatarUploaded(String base64Image) async {
     setState(() => _uploading = true);
@@ -157,11 +158,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              Center(
+                child: TextButton.icon(
+                  onPressed: _deleting ? null : _confirmDeleteAccount,
+                  icon: _deleting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppColors.muted),
+                        )
+                      : const Icon(Icons.delete_forever,
+                          color: AppColors.muted, size: 20),
+                  label: const Text('Supprimer mon compte',
+                      style: TextStyle(color: AppColors.muted, fontSize: 14)),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Supprimer mon compte',
+            style: TextStyle(color: AppColors.text)),
+        content: const Text(
+          'Cette action est définitive. Ton compte et toutes tes données '
+          '(réservations, profil) seront supprimés immédiatement et sans '
+          'possibilité de récupération.',
+          style: TextStyle(color: AppColors.muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler',
+                style: TextStyle(color: AppColors.text)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer définitivement',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    try {
+      final auth = context.read<AuthProvider>();
+      await auth.api.deleteMyAccount();
+      await auth.logout();
+      if (mounted) context.go('/login');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _deleting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Suppression impossible : $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
   }
 
   String? _fullUrl(AuthProvider auth, String? url) {

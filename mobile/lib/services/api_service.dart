@@ -171,6 +171,15 @@ class ApiService {
     return Member.fromJson(data);
   }
 
+  /// Suppression définitive du compte (exigence App Store 5.1.1(v)).
+  Future<void> deleteMyAccount() async {
+    final res = await _Http.delete(
+      Uri.parse(ApiConfig.me),
+      headers: _headers,
+    );
+    _checkStatus(res);
+  }
+
   Future<Member> uploadMyAvatar(String base64Image) async {
     final res = await _Http.post(
       Uri.parse(_joinUrl(ApiConfig.baseUrl, 'members/me/avatar')),
