@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_zxing/flutter_zxing.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
 import 'package:pgc_app/providers/auth_provider.dart';
@@ -18,27 +18,18 @@ class AccessScannerScreen extends StatefulWidget {
 }
 
 class _AccessScannerScreenState extends State<AccessScannerScreen> {
-  final MobileScannerController _controller = MobileScannerController();
   bool _busy = false;
   Map<String, dynamic>? _result;
   String? _error;
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _onDetect(BarcodeCapture capture) async {
-    if (_busy || _result != null) return; // un scan à la fois
-    final code = capture.barcodes.isNotEmpty
-        ? capture.barcodes.first.rawValue
-        : null;
-    if (code == null || code.isEmpty) return;
+  Future<void> _onScan(Code code) async {
+    if (_busy || _result != null || _error != null) return; // un scan à la fois
+    final value = code.text;
+    if (value == null || value.isEmpty) return;
 
     setState(() => _busy = true);
     try {
-      final res = await context.read<AuthProvider>().api.verifyAccess(code);
+      final res = await context.read<AuthProvider>().api.verifyAccess(value);
       if (!mounted) return;
       setState(() => _result = res);
     } on ApiException catch (e) {
@@ -74,12 +65,19 @@ class _AccessScannerScreenState extends State<AccessScannerScreen> {
       ),
       body: (_result != null || _error != null)
           ? _buildResult()
-          : Stack(
-              alignment: Alignment.center,
-              children: [
-                MobileScanner(controller: _controller, onDetect: _onDetect),
-                _ScannerOverlay(busy: _busy),
-              ],
+          : ReaderWidget(
+              onScan: _onScan,
+              codeFormat: Format.qrCode,
+              showGallery: false,
+              showToggleCamera: false,
+              showScannerOverlay: true,
+              scannerOverlay: const FixedScannerOverlay(
+                  borderColor: AppColors.gold, cutOutSize: 260),
+              loading: const DecoratedBox(
+                decoration: BoxDecoration(color: AppColors.bg),
+                child: Center(
+                    child: CircularProgressIndicator(color: AppColors.gold)),
+              ),
             ),
     );
   }
@@ -156,44 +154,6 @@ class _ResultView extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ScannerOverlay extends StatelessWidget {
-  final bool busy;
-  const _ScannerOverlay({required this.busy});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 260,
-          height: 260,
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.gold, width: 3),
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: busy
-              ? const Center(
-                  child: CircularProgressIndicator(color: AppColors.gold))
-              : null,
-        ),
-        const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.black54,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            busy ? 'Vérification…' : 'Vise le QR code du membre',
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-          ),
-        ),
-      ],
     );
   }
 }
