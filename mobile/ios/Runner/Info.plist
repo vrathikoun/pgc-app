@@ -31,7 +31,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>PGC App a besoin d'accéder à vos photos pour définir votre photo de profil.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>PGC App a besoin de la caméra pour prendre votre photo de profil.</string>
+	<string>PGC App utilise la caméra pour votre photo de profil et pour scanner les QR codes d'accès à l'accueil du club.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

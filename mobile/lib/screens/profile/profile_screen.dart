@@ -139,6 +139,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
               ]),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: () => context.push('/access/card'),
+                  icon: const Icon(Icons.qr_code_2),
+                  label: const Text('Ma carte d’accès',
+                      style: TextStyle(fontSize: 16)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.darkGreen,
+                    foregroundColor: AppColors.text,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+              ),
+              if (member.isAdmin || member.isCoach) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/access/scan'),
+                    icon: const Icon(Icons.qr_code_scanner, color: AppColors.gold),
+                    label: const Text('Scanner l’accès',
+                        style: TextStyle(color: AppColors.gold, fontSize: 16)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.gold),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,

@@ -17,6 +17,7 @@ from app.routers import (
     academy,
     notifications,
     tasks,
+    access,
 )
 
 # Crée toutes les tables au démarrage, puis applique les petites migrations.
@@ -72,6 +73,7 @@ app.include_router(subscriptions.router)
 app.include_router(academy.router)
 app.include_router(notifications.router)
 app.include_router(tasks.router)
+app.include_router(access.router)
 
 
 @app.get("/", tags=["Health"])

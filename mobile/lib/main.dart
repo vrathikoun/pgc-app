@@ -16,6 +16,8 @@ import 'package:pgc_app/screens/courses/schedule_screen.dart';
 import 'package:pgc_app/screens/coaches/coach_profile_screen.dart';
 import 'package:pgc_app/screens/bookings/my_bookings_screen.dart';
 import 'package:pgc_app/screens/profile/profile_screen.dart';
+import 'package:pgc_app/screens/access/access_card_screen.dart';
+import 'package:pgc_app/screens/access/access_scanner_screen.dart';
 import 'package:pgc_app/screens/admin/admin_dashboard_screen.dart';
 import 'package:pgc_app/screens/admin/course_form_screen.dart';
 import 'package:pgc_app/screens/admin/member_admin_screen.dart';
@@ -122,6 +124,16 @@ class PgcApp extends StatelessWidget {
             GoRoute(
               path: '/profile',
               builder: (_, __) => const ProfileScreen(),
+            ),
+
+            GoRoute(
+              path: '/access/card',
+              builder: (_, __) => const AccessCardScreen(),
+            ),
+
+            GoRoute(
+              path: '/access/scan',
+              builder: (_, __) => const AccessScannerScreen(),
             ),
 
             GoRoute(

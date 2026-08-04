@@ -14,4 +14,8 @@ class ApiConfig {
   static const String academyVideos = '$baseUrl/academy/videos';
 
   static const String deviceToken = '$baseUrl/notifications/device-token';
+
+  // Contrôle d'accès par QR code
+  static const String myAccessQr = '$baseUrl/access/my-qr';
+  static const String accessVerify = '$baseUrl/access/verify';
 }

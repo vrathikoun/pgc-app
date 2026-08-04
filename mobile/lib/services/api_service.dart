@@ -171,6 +171,32 @@ class ApiService {
     return Member.fromJson(data);
   }
 
+  /// Jeton court à encoder dans le QR d'accès du membre.
+  Future<String> getMyAccessQr() async {
+    final res = await _Http.get(Uri.parse(ApiConfig.myAccessQr), headers: _headers);
+    _checkStatus(res);
+    final data = _parseBody(res);
+    if (data is! Map || data['token'] == null) {
+      throw ApiException('Réponse serveur vide');
+    }
+    return data['token'] as String;
+  }
+
+  /// Vérifie un QR scanné à l'accueil (staff uniquement) → droit d'accès.
+  Future<Map<String, dynamic>> verifyAccess(String token) async {
+    final res = await _Http.post(
+      Uri.parse(ApiConfig.accessVerify),
+      headers: _headers,
+      body: jsonEncode({'token': token}),
+    );
+    _checkStatus(res);
+    final data = _parseBody(res);
+    if (data is! Map) {
+      throw ApiException('Réponse serveur invalide');
+    }
+    return Map<String, dynamic>.from(data);
+  }
+
   /// Suppression définitive du compte (exigence App Store 5.1.1(v)).
   Future<void> deleteMyAccount() async {
     final res = await _Http.delete(

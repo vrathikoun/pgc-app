@@ -19,6 +19,7 @@ void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('démo suppression de compte', (tester) async {
+    await binding.convertFlutterSurfaceToImage();
     await initializeDateFormatting('fr_FR', null);
 
     final auth = AuthProvider();
@@ -42,13 +43,16 @@ void main() {
     final deleteBtn = find.text('Supprimer mon compte');
     await tester.scrollUntilVisible(deleteBtn, 300,
         scrollable: find.byType(Scrollable).first);
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 1));
+    await binding.takeScreenshot('del-01-profil-bouton');
     await tester.tap(deleteBtn);
-    await tester.pump(const Duration(seconds: 3)); // dialogue de confirmation visible
+    await tester.pump(const Duration(seconds: 2)); // dialogue de confirmation visible
+    await binding.takeScreenshot('del-02-dialogue-confirmation');
 
     // Confirme la suppression définitive.
     await tester.tap(find.text('Supprimer définitivement'));
     await tester.pump(const Duration(seconds: 5)); // suppression + retour login
-    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 2));
+    await binding.takeScreenshot('del-03-apres-suppression-login');
   });
 }
