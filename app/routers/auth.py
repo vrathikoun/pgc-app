@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -12,7 +12,11 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/register", response_model=MemberOut, status_code=201)
-def register(data: MemberCreate, db: Session = Depends(get_db)):
+def register(
+    data: MemberCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """Inscription d'un nouveau membre."""
     if db.query(Member).filter(Member.email == data.email).first():
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
@@ -27,7 +31,9 @@ def register(data: MemberCreate, db: Session = Depends(get_db)):
     db.add(member)
     db.commit()
     db.refresh(member)
-    email_service.send_welcome(member.first_name, member.email)
+    # E-mail de bienvenue envoyé en tâche de fond : un SMTP lent ou en échec ne
+    # doit ni bloquer ni faire échouer l'inscription (le compte est déjà créé).
+    background_tasks.add_task(email_service.send_welcome, member.first_name, member.email)
     return member
 
 
