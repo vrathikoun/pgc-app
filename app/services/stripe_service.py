@@ -262,23 +262,47 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
                     member.weekly_booking_limit = limit
         db.commit()
 
+        # Nouvel abonnement : email de confirmation + lien pour créer/associer
+        # le compte (même si l'abonnement est créé depuis le dashboard Stripe).
+        if event_type == "customer.subscription.created":
+            email = (
+                member.email if member else _customer_email(stripe_sub.get("customer"))
+            )
+            if email:
+                _safe_send_signup(email)
+
     # Paiement unique (cours à l'unité) via Checkout / lien de paiement.
     elif event_type == "checkout.session.completed":
         session = stripe_sub
         email = (session.get("customer_details") or {}).get("email") or session.get(
             "customer_email"
         )
-        if email:
-            if session.get("mode") == "payment":
-                _create_drop_in_pass(
-                    email,
-                    session.get("payment_intent") or session.get("id"),
-                    db,
-                )
-            # Email de confirmation + lien pour créer/associer son compte.
-            email_service.send_signup_after_payment(email)
+        if email and session.get("mode") == "payment":
+            _create_drop_in_pass(
+                email,
+                session.get("payment_intent") or session.get("id"),
+                db,
+            )
+            _safe_send_signup(email)
 
     return {"received": True, "type": event_type}
+
+
+def _customer_email(customer_id):
+    if not customer_id:
+        return None
+    try:
+        return stripe.Customer.retrieve(customer_id).get("email")
+    except Exception:
+        return None
+
+
+def _safe_send_signup(email: str) -> None:
+    """Envoi de l'email post-paiement — un échec SMTP ne doit pas casser le webhook."""
+    try:
+        email_service.send_signup_after_payment(email)
+    except Exception as exc:
+        print(f"[STRIPE] email post-paiement non envoyé à {email} : {exc}")
 
 
 def _subscription_amount(stripe_sub):
