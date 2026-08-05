@@ -214,10 +214,16 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
             payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
         )
     except stripe.error.SignatureVerificationError:
+        print("[WEBHOOK] Signature invalide (STRIPE_WEBHOOK_SECRET ne correspond pas)")
         return {"error": "Signature invalide"}
 
     event_type = event["type"]
     stripe_sub = event["data"]["object"]
+    key_mode = "test" if settings.STRIPE_SECRET_KEY.startswith("sk_test") else "live"
+    print(
+        f"[WEBHOOK] type={event_type} livemode={event.get('livemode')} "
+        f"cle_api={key_mode}"
+    )
 
     if event_type in (
         "customer.subscription.created",
@@ -268,6 +274,10 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
             email = (
                 member.email if member else _customer_email(stripe_sub.get("customer"))
             )
+            print(
+                f"[WEBHOOK] abonnement créé — membre={'oui' if member else 'non'} "
+                f"email={email or 'INTROUVABLE'}"
+            )
             if email:
                 _safe_send_signup(email)
 
@@ -301,8 +311,9 @@ def _safe_send_signup(email: str) -> None:
     """Envoi de l'email post-paiement — un échec SMTP ne doit pas casser le webhook."""
     try:
         email_service.send_signup_after_payment(email)
+        print(f"[WEBHOOK] email post-paiement envoyé à {email}")
     except Exception as exc:
-        print(f"[STRIPE] email post-paiement non envoyé à {email} : {exc}")
+        print(f"[WEBHOOK] email post-paiement NON envoyé à {email} : {type(exc).__name__}: {exc}")
 
 
 def _subscription_amount(stripe_sub):
