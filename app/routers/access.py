@@ -16,23 +16,15 @@ from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, decode_access_token
 from app.database import get_db
-from app.models.member import Member, MemberRole, SubscriptionStatus
+from app.models.member import Member, MemberRole
 from app.routers.members import get_current_member
+from app.services import stripe_service
 
 router = APIRouter(prefix="/access", tags=["Access"])
 
 # Scope dédié : empêche d'utiliser un jeton d'authentification normal comme QR.
 _QR_SCOPE = "access_check"
 _QR_TTL_SECONDS = 300  # 5 minutes
-# Statuts autorisant l'accès aux cours.
-_ALLOWED_STATUSES = {SubscriptionStatus.active, SubscriptionStatus.trial}
-
-_STATUS_LABELS = {
-    SubscriptionStatus.active: "Abonnement actif",
-    SubscriptionStatus.trial: "Période d'essai",
-    SubscriptionStatus.inactive: "Abonnement inactif",
-    SubscriptionStatus.suspended: "Abonnement suspendu",
-}
 
 
 class AccessQrOut(BaseModel):
@@ -87,12 +79,10 @@ def verify_access(
 
     if not member.is_active:
         allowed, reason = False, "Compte désactivé"
-    elif member.subscription_status in _ALLOWED_STATUSES:
-        allowed = True
-        reason = _STATUS_LABELS.get(member.subscription_status, "Accès autorisé")
     else:
-        allowed = False
-        reason = _STATUS_LABELS.get(member.subscription_status, "Accès refusé")
+        # Vérification EN DIRECT auprès de Stripe (paiement de la période en
+        # cours), avec repli sur le statut stocké si Stripe est injoignable.
+        allowed, reason = stripe_service.check_member_access(member, db)
 
     return AccessVerifyOut(
         allowed=allowed,
