@@ -13,6 +13,7 @@ Configure dans .env :
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formataddr
 
 from app.core.config import settings
 
@@ -26,7 +27,8 @@ def _send(to: str, subject: str, html: str) -> None:
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = settings.EMAIL_FROM
+    # Nom affiché dans la boîte du destinataire (ex. "Polo Grappling Club").
+    msg["From"] = formataddr((settings.APP_NAME, settings.EMAIL_FROM))
     msg["To"] = to
     msg.attach(MIMEText(html, "html"))
 

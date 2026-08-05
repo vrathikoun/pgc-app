@@ -1,5 +1,5 @@
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -65,6 +65,31 @@ def privacy_policy():
 @app.get("/support", include_in_schema=False)
 def support_page():
     return FileResponse(Path(__file__).parent / "static" / "support.html")
+
+
+# Diagnostic SMTP temporaire — montre ce que Render voit et tente un envoi.
+@app.get("/debug/smtp", include_in_schema=False)
+def debug_smtp(key: str = "", to: str = ""):
+    from app.core.config import settings
+    from app.services import email_service
+
+    if key != "pgc-diag-2026":
+        raise HTTPException(status_code=403, detail="clé invalide")
+
+    result = {
+        "DEBUG": settings.DEBUG,
+        "SMTP_HOST": settings.SMTP_HOST,
+        "SMTP_PORT": settings.SMTP_PORT,
+        "SMTP_USER": settings.SMTP_USER,
+        "EMAIL_FROM": settings.EMAIL_FROM,
+        "password_len": len(settings.SMTP_PASSWORD or ""),
+    }
+    try:
+        email_service._send(to or settings.EMAIL_FROM, "Test SMTP PGC (diag)", "<p>OK</p>")
+        result["send"] = "OK"
+    except Exception as exc:  # noqa: BLE001
+        result["send"] = f"{type(exc).__name__}: {exc}"
+    return result
 
 app.include_router(auth.router)
 app.include_router(members.router)
