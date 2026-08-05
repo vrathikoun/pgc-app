@@ -10,6 +10,7 @@ import 'package:pgc_app/providers/auth_provider.dart';
 import 'package:pgc_app/services/push_notification_service.dart';
 import 'package:pgc_app/screens/auth/login_screen.dart';
 import 'package:pgc_app/screens/auth/register_screen.dart';
+import 'package:pgc_app/screens/auth/forgot_password_screen.dart';
 import 'package:pgc_app/screens/courses/course_list_screen.dart';
 import 'package:pgc_app/screens/courses/course_detail_screen.dart';
 import 'package:pgc_app/screens/courses/schedule_screen.dart';
@@ -51,7 +52,9 @@ class PgcApp extends StatelessWidget {
       redirect: (context, state) {
         final loggedIn = auth.isAuthenticated;
         final location = state.matchedLocation;
-        final onAuth = location == '/login' || location == '/register';
+        final onAuth = location == '/login' ||
+            location == '/register' ||
+            location == '/forgot-password';
         final onAdmin = location.startsWith('/admin');
 
         if (!loggedIn && !onAuth) return '/login';
@@ -76,6 +79,11 @@ class PgcApp extends StatelessWidget {
         GoRoute(
           path: '/register',
           builder: (_, __) => const RegisterScreen(),
+        ),
+
+        GoRoute(
+          path: '/forgot-password',
+          builder: (_, __) => const ForgotPasswordScreen(),
         ),
 
         ShellRoute(

@@ -47,6 +47,40 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   }
 
   Future<void> _cancel(Booking booking) async {
+    // Confirmation, avec avertissement si l'annulation est tardive (< 2h).
+    final start = booking.course?.startTime;
+    final soon = start != null &&
+        start.difference(DateTime.now()) < const Duration(hours: 2);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Annuler ta réservation ?',
+            style: TextStyle(color: AppColors.text)),
+        content: Text(
+          soon
+              ? 'Le cours commence dans moins de 2 heures. Annuler si tard '
+                  'pénalise le club et les membres en liste d’attente — '
+                  'préviens ton coach si possible.'
+              : 'Ta place sera libérée pour les membres en liste d’attente.',
+          style: const TextStyle(color: AppColors.muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Garder ma place',
+                style: TextStyle(color: AppColors.text)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Me désinscrire',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
     try {
       await context.read<AuthProvider>().api.cancelBooking(booking.id);
       await _loadBookings();
@@ -65,7 +99,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   Widget build(BuildContext context) {
     final upcoming = _bookings
         .where((b) => b.course != null && !b.course!.isPast && !b.isCancelled)
-        .toList();
+        .toList()
+      // Le prochain cours d'abord (ordre chronologique croissant).
+      ..sort((a, b) => a.course!.startTime.compareTo(b.course!.startTime));
     final history = _bookings
         .where((b) => b.course == null || b.course!.isPast || b.isCancelled)
         .toList();

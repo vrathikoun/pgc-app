@@ -1,14 +1,103 @@
+import secrets
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.member import Member
-from app.schemas.member_schema import LoginRequest, MemberCreate, MemberOut, TokenOut
+from app.models.password_reset import PasswordReset
+from app.schemas.member_schema import (
+    LoginRequest,
+    MemberCreate,
+    MemberOut,
+    TokenOut,
+    validate_password_72_bytes,
+)
 from app.core.security import create_access_token, hash_password, verify_password
 from app.services import email_service
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+_RESET_CODE_TTL_MINUTES = 15
+
+
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    email: EmailStr
+    code: str
+    new_password: str
+
+    _validate_password = field_validator("new_password")(validate_password_72_bytes)
+
+
+@router.post("/forgot-password", status_code=202)
+def forgot_password(
+    data: ForgotPasswordIn,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Envoie un code de réinitialisation par email.
+
+    Répond toujours 202, que l'email existe ou non (pas d'énumération de comptes).
+    """
+    member = db.query(Member).filter(Member.email == data.email).first()
+    if member:
+        # Invalide les codes précédents.
+        db.query(PasswordReset).filter(
+            PasswordReset.member_id == member.id,
+            PasswordReset.used_at.is_(None),
+        ).delete(synchronize_session=False)
+
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        db.add(
+            PasswordReset(
+                member_id=member.id,
+                code=code,
+                expires_at=datetime.now(timezone.utc)
+                + timedelta(minutes=_RESET_CODE_TTL_MINUTES),
+            )
+        )
+        db.commit()
+        background_tasks.add_task(
+            email_service.send_password_reset, member.first_name, member.email, code
+        )
+    return {"message": "Si un compte existe, un code a été envoyé par email"}
+
+
+@router.post("/reset-password")
+def reset_password(data: ResetPasswordIn, db: Session = Depends(get_db)):
+    """Réinitialise le mot de passe avec le code reçu par email."""
+    member = db.query(Member).filter(Member.email == data.email).first()
+    if not member:
+        raise HTTPException(status_code=400, detail="Code invalide ou expiré")
+
+    now = datetime.now(timezone.utc)
+    reset = (
+        db.query(PasswordReset)
+        .filter(
+            PasswordReset.member_id == member.id,
+            PasswordReset.code == data.code.strip(),
+            PasswordReset.used_at.is_(None),
+        )
+        .order_by(PasswordReset.created_at.desc())
+        .first()
+    )
+    expires = reset.expires_at if reset else None
+    if expires is not None and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if not reset or not expires or expires < now:
+        raise HTTPException(status_code=400, detail="Code invalide ou expiré")
+
+    member.hashed_password = hash_password(data.new_password)
+    reset.used_at = now
+    db.commit()
+    return {"message": "Mot de passe mis à jour, tu peux te connecter"}
 
 
 @router.post("/register", response_model=MemberOut, status_code=201)

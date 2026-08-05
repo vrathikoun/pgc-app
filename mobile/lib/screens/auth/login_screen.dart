@@ -123,7 +123,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         : const Text('Se connecter', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => context.push('/forgot-password'),
+                  child: const Text('Mot de passe oublié ?', style: TextStyle(color: AppColors.muted)),
+                ),
                 TextButton(
                   onPressed: () => context.go('/register'),
                   child: const Text('Pas encore de compte ? S’inscrire', style: TextStyle(color: AppColors.gold)),

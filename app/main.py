@@ -9,6 +9,7 @@ from app.database import Base, engine, run_lightweight_migrations
 from app.models import academy_video  # noqa: F401 — force table creation
 from app.models import device_token  # noqa: F401 — force table creation
 from app.models import access_pass  # noqa: F401 — force table creation
+from app.models import password_reset  # noqa: F401 — force table creation
 from app.routers import (
     auth,
     members,

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import 'package:pgc_app/models/booking.dart';
 import 'package:pgc_app/models/course.dart';
 import 'package:pgc_app/providers/auth_provider.dart';
 import 'package:pgc_app/services/api_service.dart';
@@ -20,8 +21,10 @@ class CourseDetailScreen extends StatefulWidget {
 
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
   Course? _course;
+  Booking? _myBooking; // réservation active (confirmée ou liste d'attente)
   bool _loading = true;
   bool _booking = false;
+  bool _cancelling = false;
   String? _error;
   String? _successMessage;
 
@@ -42,10 +45,23 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     }
 
     try {
-      final course = await context.read<AuthProvider>().api.getCourse(widget.courseId);
+      final api = context.read<AuthProvider>().api;
+      final course = await api.getCourse(widget.courseId);
+      // Ma réservation éventuelle sur ce cours (pour adapter les boutons).
+      Booking? mine;
+      try {
+        final bookings = await api.getMyBookings();
+        for (final b in bookings) {
+          if (b.courseId == widget.courseId && (b.isConfirmed || b.isWaitlist)) {
+            mine = b;
+            break;
+          }
+        }
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _course = course;
+        _myBooking = mine;
         _loading = false;
       });
     } catch (e) {
@@ -69,7 +85,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       final message = booking.isWaitlist
           ? 'Cours complet — tu es n°${booking.waitlistPosition ?? '?'} en liste d’attente ⏳'
           : 'Réservation confirmée ✅';
-      setState(() => _successMessage = message);
+      setState(() {
+        _successMessage = message;
+        _myBooking = booking;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
@@ -121,6 +140,65 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   bool get _bookable =>
       _course != null && BookingWindow.isWithinWindow(_course!.startTime);
 
+  Future<void> _confirmCancel() async {
+    final course = _course!;
+    final soon =
+        course.startTime.difference(DateTime.now()) < const Duration(hours: 2);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Annuler ta réservation ?',
+            style: TextStyle(color: AppColors.text)),
+        content: Text(
+          soon
+              ? 'Le cours commence dans moins de 2 heures. Annuler si tard '
+                  'pénalise le club et les membres en liste d’attente — '
+                  'préviens ton coach si possible.'
+              : 'Ta place sera libérée pour les membres en liste d’attente.',
+          style: const TextStyle(color: AppColors.muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Garder ma place',
+                style: TextStyle(color: AppColors.text)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Me désinscrire',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _cancelling = true;
+      _error = null;
+      _successMessage = null;
+    });
+    try {
+      await context.read<AuthProvider>().api.cancelBooking(_myBooking!.id);
+      if (!mounted) return;
+      setState(() => _myBooking = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Réservation annulée'),
+          backgroundColor: AppColors.darkGreen,
+        ),
+      );
+      await _loadCourse(silent: true);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _cancelling = false);
+    }
+  }
+
   Widget _buildContent() {
     final course = _course!;
     final dateFormat = DateFormat('EEEE d MMMM yyyy', 'fr_FR');
@@ -162,10 +240,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             ],
           ),
           const SizedBox(height: 18),
-          if (_successMessage != null)
-            _MessageBox(text: _successMessage!, color: AppColors.green)
-          else if (_error != null)
+          if (_error != null)
             _MessageBox(text: _error!, color: AppColors.danger)
+          else if (_myBooking != null)
+            _MessageBox(
+              text: _successMessage ??
+                  (_myBooking!.isWaitlist
+                      ? 'Tu es en liste d’attente ⏳'
+                      : 'Réservation confirmée ✅'),
+              color: AppColors.green,
+            )
           else if (!_bookable)
             const _MessageBox(
               text:
@@ -173,26 +257,52 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               color: AppColors.gold,
             ),
           const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              onPressed: (_booking || !_bookable) ? null : _book,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: (course.isFull || !_bookable) ? AppColors.surface2 : AppColors.darkGreen,
-                foregroundColor: AppColors.text,
-                disabledBackgroundColor: AppColors.surface2,
-                disabledForegroundColor: AppColors.muted,
+          // Déjà inscrit → bouton de désinscription ; sinon bouton de réservation.
+          if (_myBooking != null)
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: OutlinedButton.icon(
+                onPressed:
+                    (_cancelling || course.hasStarted) ? null : _confirmCancel,
+                icon: _cancelling
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.danger),
+                      )
+                    : const Icon(Icons.event_busy, color: AppColors.danger),
+                label: const Text('Se désinscrire',
+                    style: TextStyle(color: AppColors.danger, fontSize: 16)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.danger),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
               ),
-              child: _booking
-                  ? const CircularProgressIndicator(color: AppColors.text)
-                  : Text(
-                      !_bookable
-                          ? 'Réservation pas encore ouverte'
-                          : (course.isFull ? 'Rejoindre la liste d’attente' : 'Réserver ce cours'),
-                    ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: (_booking || !_bookable) ? null : _book,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: (course.isFull || !_bookable) ? AppColors.surface2 : AppColors.darkGreen,
+                  foregroundColor: AppColors.text,
+                  disabledBackgroundColor: AppColors.surface2,
+                  disabledForegroundColor: AppColors.muted,
+                ),
+                child: _booking
+                    ? const CircularProgressIndicator(color: AppColors.text)
+                    : Text(
+                        !_bookable
+                            ? 'Réservation pas encore ouverte'
+                            : (course.isFull ? 'Rejoindre la liste d’attente' : 'Réserver ce cours'),
+                      ),
+              ),
             ),
-          ),
         ],
       ),
     );

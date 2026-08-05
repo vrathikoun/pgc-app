@@ -51,6 +51,21 @@ def send_welcome(first_name: str, email: str) -> None:
     )
 
 
+def send_password_reset(first_name: str, email: str, code: str) -> None:
+    """Code de réinitialisation du mot de passe (valable 15 minutes)."""
+    _send(
+        to=email,
+        subject="Ton code de réinitialisation PGC",
+        html=f"""
+        <h2>Réinitialisation du mot de passe</h2>
+        <p>Salut {first_name}, voici ton code de réinitialisation :</p>
+        <p style="font-size:28px;font-weight:bold;letter-spacing:6px">{code}</p>
+        <p>Il est valable 15 minutes. Si tu n'es pas à l'origine de cette
+        demande, ignore simplement cet email.</p>
+        """,
+    )
+
+
 def send_signup_after_payment(email: str) -> None:
     """Après un paiement Stripe : confirme et invite à créer/associer son compte."""
     from app.core.config import settings

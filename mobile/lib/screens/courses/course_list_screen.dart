@@ -59,6 +59,16 @@ class _CourseListScreenState extends State<CourseListScreen> {
       );
       final coaches = await api.getCoaches();
 
+      // Carrousel : pas de compte technique « Admin », et les coachs les plus
+      // présents d'abord (ordre voulu par le club).
+      const coachOrder = ['nicolas', 'viphone', 'mathieu', 'faris'];
+      coaches.removeWhere((c) => c.firstName.trim().toLowerCase() == 'admin');
+      int rank(m) {
+        final i = coachOrder.indexOf(m.firstName.trim().toLowerCase());
+        return i == -1 ? coachOrder.length : i;
+      }
+      coaches.sort((a, b) => rank(a).compareTo(rank(b)));
+
       setState(() {
         _courses = courses;
         _coaches = coaches;
@@ -74,9 +84,13 @@ class _CourseListScreenState extends State<CourseListScreen> {
 
   List<Course> get _selectedCourses {
     final day = _days[_selectedDayIndex];
+    final now = DateTime.now();
     return _courses.where((course) {
       final date = course.startTime;
-      return date.year == day.year && date.month == day.month && date.day == day.day;
+      final sameDay =
+          date.year == day.year && date.month == day.month && date.day == day.day;
+      // Les cours déjà terminés ne sont plus affichés.
+      return sameDay && course.endTime.isAfter(now);
     }).toList();
   }
 

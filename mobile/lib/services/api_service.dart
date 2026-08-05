@@ -171,6 +171,26 @@ class ApiService {
     return Member.fromJson(data);
   }
 
+  /// Demande l'envoi d'un code de réinitialisation de mot de passe par email.
+  Future<void> forgotPassword(String email) async {
+    final res = await _Http.post(
+      Uri.parse(_joinUrl(ApiConfig.baseUrl, 'auth/forgot-password')),
+      headers: _headers,
+      body: jsonEncode({'email': email}),
+    );
+    _checkStatus(res);
+  }
+
+  /// Réinitialise le mot de passe avec le code reçu par email.
+  Future<void> resetPassword(String email, String code, String newPassword) async {
+    final res = await _Http.post(
+      Uri.parse(_joinUrl(ApiConfig.baseUrl, 'auth/reset-password')),
+      headers: _headers,
+      body: jsonEncode({'email': email, 'code': code, 'new_password': newPassword}),
+    );
+    _checkStatus(res);
+  }
+
   /// Jeton court à encoder dans le QR d'accès du membre.
   Future<String> getMyAccessQr() async {
     final res = await _Http.get(Uri.parse(ApiConfig.myAccessQr), headers: _headers);
