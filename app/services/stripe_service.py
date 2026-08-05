@@ -7,14 +7,16 @@ Plans configurés (à adapter selon tes tarifs) :
   annual     → 449 €/an
 """
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import stripe
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.member import Member, SubscriptionStatus
+from app.models.access_pass import AccessPass
+from app.models.member import Member, SubscriptionPlan, SubscriptionStatus
 from app.models.subscription import PlanType, Subscription, SubscriptionState
+from app.services import email_service
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -252,9 +254,74 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
         member = _member_for_subscription(stripe_sub, sub, db)
         if member:
             member.subscription_status = member_status
+            # Règle le plan et la limite hebdo selon le tarif payé.
+            if member_status == SubscriptionStatus.active:
+                plan, limit = _plan_for_amount(_subscription_amount(stripe_sub))
+                if plan is not None:
+                    member.subscription_plan = plan
+                    member.weekly_booking_limit = limit
         db.commit()
 
+    # Paiement unique (cours à l'unité) via Checkout / lien de paiement.
+    elif event_type == "checkout.session.completed":
+        session = stripe_sub
+        email = (session.get("customer_details") or {}).get("email") or session.get(
+            "customer_email"
+        )
+        if email:
+            if session.get("mode") == "payment":
+                _create_drop_in_pass(
+                    email,
+                    session.get("payment_intent") or session.get("id"),
+                    db,
+                )
+            # Email de confirmation + lien pour créer/associer son compte.
+            email_service.send_signup_after_payment(email)
+
     return {"received": True, "type": event_type}
+
+
+def _subscription_amount(stripe_sub):
+    """Montant (centimes) du 1er item de l'abonnement."""
+    try:
+        price = stripe_sub["items"]["data"][0]["price"]
+        return price["unit_amount"]
+    except Exception:
+        return None
+
+
+def _plan_for_amount(amount):
+    """(plan, limite hebdo) selon le montant payé. (None, None) si inconnu."""
+    if amount == settings.PRICE_TWO_PER_WEEK_CENTS:
+        return SubscriptionPlan.two_per_week, 2
+    if amount == settings.PRICE_UNLIMITED_CENTS:
+        return SubscriptionPlan.unlimited, None
+    return None, None
+
+
+def _create_drop_in_pass(email: str, payment_id, db: Session) -> None:
+    """Crée un pass à l'unité (idempotent sur le paiement)."""
+    if payment_id:
+        exists = (
+            db.query(AccessPass)
+            .filter(AccessPass.stripe_payment_id == str(payment_id))
+            .first()
+        )
+        if exists:
+            return
+    member = db.query(Member).filter(Member.email == email).first()
+    expires = datetime.now(timezone.utc) + timedelta(
+        days=settings.DROP_IN_PASS_VALIDITY_DAYS
+    )
+    db.add(
+        AccessPass(
+            email=email,
+            member_id=member.id if member else None,
+            expires_at=expires,
+            stripe_payment_id=str(payment_id) if payment_id else None,
+        )
+    )
+    db.commit()
 
 
 def _member_for_subscription(stripe_sub, sub, db: Session):

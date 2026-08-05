@@ -49,6 +49,24 @@ def send_welcome(first_name: str, email: str) -> None:
     )
 
 
+def send_signup_after_payment(email: str) -> None:
+    """Après un paiement Stripe : confirme et invite à créer/associer son compte."""
+    from app.core.config import settings
+
+    _send(
+        to=email,
+        subject="Paiement confirmé — active ton accès PGC 🥋",
+        html=f"""
+        <h2>Merci, ton paiement est confirmé !</h2>
+        <p>Dernière étape pour accéder aux cours : crée ton compte sur
+        l'application Polo Grappling Club <b>avec cette même adresse email</b>
+        ({email}). Ton QR code d'accès sera alors actif à l'accueil.</p>
+        <p><a href="{settings.SIGNUP_URL}">Créer mon compte</a></p>
+        <p>À très vite sur les tatamis 💪</p>
+        """,
+    )
+
+
 def send_booking_confirmation(first_name: str, email: str, course_name: str, start_time: str) -> None:
     """Email de confirmation de réservation."""
     _send(

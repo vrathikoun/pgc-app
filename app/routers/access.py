@@ -8,7 +8,7 @@ Principe :
   Le statut d'abonnement est lu **en direct** en base (mis à jour par le
   webhook Stripe) : impossible de tricher avec une ancienne capture d'écran.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, decode_access_token
 from app.database import get_db
+from app.models.access_pass import AccessPass
 from app.models.member import Member, MemberRole
 from app.routers.members import get_current_member
 from app.services import stripe_service
@@ -62,6 +63,47 @@ def _require_staff(current: Member = Depends(get_current_member)) -> Member:
     return current
 
 
+def _check_and_consume_pass(member: Member, db: Session) -> tuple[bool, str]:
+    """Autorise si le membre a un pass « cours à l'unité » valide, et le consomme.
+
+    Les pass sont liés par email (achat possible avant création du compte).
+    Un pass déjà consommé récemment (< 4 h) reste accepté pour tolérer un
+    double scan à l'accueil sans re-décompter d'entrée.
+    """
+    now = datetime.now(timezone.utc)
+
+    pass_valide = (
+        db.query(AccessPass)
+        .filter(
+            AccessPass.email == member.email,
+            AccessPass.consumed_at.is_(None),
+            AccessPass.expires_at > now,
+        )
+        .order_by(AccessPass.expires_at.asc())
+        .first()
+    )
+    if pass_valide:
+        pass_valide.consumed_at = now
+        if pass_valide.member_id is None:
+            pass_valide.member_id = member.id
+        db.commit()
+        return True, "Cours à l'unité — pass validé"
+
+    recent = (
+        db.query(AccessPass)
+        .filter(
+            AccessPass.email == member.email,
+            AccessPass.consumed_at.isnot(None),
+            AccessPass.consumed_at > now - timedelta(hours=4),
+        )
+        .first()
+    )
+    if recent:
+        return True, "Cours à l'unité (déjà validé)"
+
+    return False, ""
+
+
 @router.post("/verify", response_model=AccessVerifyOut)
 def verify_access(
     data: AccessVerifyIn,
@@ -80,9 +122,13 @@ def verify_access(
     if not member.is_active:
         allowed, reason = False, "Compte désactivé"
     else:
-        # Vérification EN DIRECT auprès de Stripe (paiement de la période en
-        # cours), avec repli sur le statut stocké si Stripe est injoignable.
+        # 1) Abonnement en cours payé (vérifié en direct chez Stripe).
         allowed, reason = stripe_service.check_member_access(member, db)
+        # 2) Sinon, un pass « cours à l'unité » valide (consommé au scan).
+        if not allowed:
+            pass_ok, pass_reason = _check_and_consume_pass(member, db)
+            if pass_ok:
+                allowed, reason = True, pass_reason
 
     return AccessVerifyOut(
         allowed=allowed,
