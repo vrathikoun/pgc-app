@@ -22,6 +22,26 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 _STRIPE_OK_STATUSES = {"active", "trialing"}
 
 
+def _sub_field(sub, key):
+    """Lit un champ d'un objet Subscription Stripe, tolérant dict ou StripeObject."""
+    try:
+        return sub[key]
+    except Exception:
+        return None
+
+
+def _current_period_end(sub) -> int:
+    """Fin de période courante, à la racine (API < 2025) ou au niveau des items."""
+    end = _sub_field(sub, "current_period_end")
+    if not end:
+        try:
+            items = sub["items"]["data"]
+            end = items[0]["current_period_end"] if items else None
+        except Exception:
+            end = None
+    return int(end) if end else 0
+
+
 def _sync_member_status(member: Member, status: SubscriptionStatus, db: Session) -> None:
     if member.subscription_status != status:
         member.subscription_status = status
@@ -59,8 +79,8 @@ def check_member_access(member: Member, db: Session) -> tuple[bool, str]:
         subs = stripe.Subscription.list(customer=customer_id, status="all", limit=20)
         now = time.time()
         for s in subs.auto_paging_iter():
-            status = s.get("status")
-            period_end = s.get("current_period_end") or 0
+            status = _sub_field(s, "status")
+            period_end = _current_period_end(s)
             if status in _STRIPE_OK_STATUSES and period_end > now:
                 new_status = (
                     SubscriptionStatus.trial
@@ -203,7 +223,7 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
         "customer.subscription.deleted",
     ):
         # Statut Stripe → statut membre.
-        status = stripe_sub.get("status")
+        status = _sub_field(stripe_sub, "status")
         member_status = (
             SubscriptionStatus.active
             if status in _STRIPE_OK_STATUSES
@@ -224,8 +244,8 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
                 if status == "past_due"
                 else SubscriptionState.cancelled
             )
-            sub.current_period_start = stripe_sub.get("current_period_start")
-            sub.current_period_end = stripe_sub.get("current_period_end")
+            sub.current_period_start = _sub_field(stripe_sub, "current_period_start")
+            sub.current_period_end = _current_period_end(stripe_sub) or None
 
         # Retrouve le membre : ligne locale, sinon customer Stripe, sinon email
         # (cas d'un abonnement souscrit via une page Stripe séparée).
