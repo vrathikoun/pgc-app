@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     # Montants Stripe (centimes) → mapping abonnement. Adapter si tes tarifs changent.
     PRICE_UNLIMITED_CENTS: int = 9000    # 90 € illimité
     PRICE_TWO_PER_WEEK_CENTS: int = 6500  # 65 € 2 cours/semaine
-    # Lien envoyé par email après paiement pour créer son compte.
-    SIGNUP_URL: str = "https://polograpplingclub.com"
+    # Lien envoyé par email après paiement pour créer son compte (app web).
+    SIGNUP_URL: str = "https://app.polograpplingclub.com"
 
     class Config:
         env_file = ".env"
