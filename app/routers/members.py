@@ -133,10 +133,11 @@ def list_coaches(
     _current: Member = Depends(get_current_member),
     db: Session = Depends(get_db),
 ):
+    # Carrousel « Coachs du moment » : uniquement le rôle coach (pas les admins).
     return (
         db.query(Member)
         .filter(
-            Member.role.in_([MemberRole.coach, MemberRole.admin]),
+            Member.role == MemberRole.coach,
             Member.is_active == True,
         )
         .order_by(Member.first_name)
