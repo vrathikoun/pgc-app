@@ -95,11 +95,16 @@ class _AccessScannerScreenState extends State<AccessScannerScreen> {
     final r = _result!;
     final allowed = r['allowed'] == true;
     final name = '${r['first_name'] ?? ''} ${r['last_name'] ?? ''}'.trim();
+    final bookings = (r['today_bookings'] is List)
+        ? List<Map<String, dynamic>>.from(
+            (r['today_bookings'] as List).whereType<Map>().map(Map<String, dynamic>.from))
+        : <Map<String, dynamic>>[];
     return _ResultView(
       color: allowed ? AppColors.green : AppColors.danger,
       icon: allowed ? Icons.check_circle : Icons.cancel,
       title: allowed ? 'Accès autorisé' : 'Accès refusé',
       subtitle: '$name\n${r['reason'] ?? ''}',
+      todayBookings: bookings,
       onNext: _reset,
     );
   }
@@ -110,6 +115,7 @@ class _ResultView extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final List<Map<String, dynamic>> todayBookings;
   final VoidCallback onNext;
 
   const _ResultView({
@@ -117,6 +123,7 @@ class _ResultView extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.todayBookings = const [],
     required this.onNext,
   });
 
@@ -129,8 +136,8 @@ class _ResultView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 120),
-          const SizedBox(height: 20),
+          Icon(icon, color: color, size: 100),
+          const SizedBox(height: 16),
           Text(title,
               style: TextStyle(
                   color: color, fontSize: 30, fontWeight: FontWeight.w900)),
@@ -138,7 +145,57 @@ class _ResultView extends StatelessWidget {
           Text(subtitle,
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.text, fontSize: 18)),
-          const SizedBox(height: 40),
+          const SizedBox(height: 20),
+          // Cours réservés aujourd'hui : l'accueil vérifie que le membre
+          // assiste bien à un cours qu'il a réservé.
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Cours réservés aujourd’hui',
+                    style: TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                if (todayBookings.isEmpty)
+                  const Text('Aucun cours réservé aujourd’hui ⚠️',
+                      style: TextStyle(color: AppColors.gold, fontSize: 16))
+                else
+                  ...todayBookings.map((b) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          children: [
+                            Text('${b['time'] ?? ''}',
+                                style: const TextStyle(
+                                    color: AppColors.gold,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text('${b['course_name'] ?? ''}',
+                                  style: const TextStyle(
+                                      color: AppColors.text, fontSize: 16)),
+                            ),
+                            Text(
+                              b['status'] == 'waitlist' ? '⏳ attente' : '✅',
+                              style: const TextStyle(
+                                  color: AppColors.muted, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      )),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             height: 54,
