@@ -1,23 +1,50 @@
 import base64
+import io
+import time
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.security import OAuth2PasswordBearer
+from PIL import Image
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import decode_access_token
 from app.database import get_db
 from app.models.member import Member, MemberRole
+from app.models.member_avatar import MemberAvatar
 from app.schemas.member_schema import (
     AvatarUpdate,
     MemberAdminRoleUpdate,
     MemberOut,
     MemberUpdate,
 )
-from app.services.storage_service import upload_profile_picture
 
 router = APIRouter(prefix="/members", tags=["Members"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+
+def _store_avatar(member: Member, image_bytes: bytes, db: Session) -> None:
+    """Compresse (256px, JPEG) et stocke l'avatar en base, puis met à jour l'URL.
+
+    L'avatar est servi par GET /members/{id}/avatar. On ajoute un paramètre de
+    version (?v=...) pour forcer le rafraîchissement du cache à chaque changement.
+    """
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    img.thumbnail((256, 256))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=82)
+    data = buf.getvalue()
+
+    avatar = db.get(MemberAvatar, member.id)
+    if avatar is None:
+        avatar = MemberAvatar(member_id=member.id)
+        db.add(avatar)
+    avatar.data = data
+    avatar.content_type = "image/jpeg"
+
+    base = settings.PUBLIC_API_URL.rstrip("/")
+    member.avatar_url = f"{base}/members/{member.id}/avatar?v={int(time.time())}"
 
 
 def _decode_avatar_base64(image_b64: str) -> tuple[bytes, str]:
@@ -108,24 +135,30 @@ def upload_my_avatar(
     current: Member = Depends(get_current_member),
     db: Session = Depends(get_db),
 ):
-    """
-    Upload avatar du membre connecté.
-    L'image est envoyée vers Google Cloud Storage.
-    La DB stocke l'URL publique GCS.
-    """
+    """Upload de l'avatar du membre connecté (stocké en base)."""
     try:
-        image_bytes, ext = _decode_avatar_base64(data.image_b64)
-        public_url = upload_profile_picture(image_bytes, extension=ext)
-
-        current.avatar_url = public_url
-
+        image_bytes, _ext = _decode_avatar_base64(data.image_b64)
+        _store_avatar(current, image_bytes, db)
         db.commit()
         db.refresh(current)
-
         return current
-
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Upload invalide : {e}")
+
+
+@router.get("/{member_id}/avatar")
+def get_member_avatar(member_id: int, db: Session = Depends(get_db)):
+    """Sert l'image de l'avatar (public, mis en cache côté client)."""
+    avatar = db.get(MemberAvatar, member_id)
+    if avatar is None:
+        raise HTTPException(status_code=404, detail="Pas d'avatar")
+    return Response(
+        content=avatar.data,
+        media_type=avatar.content_type,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.get("/coaches", response_model=List[MemberOut])
@@ -204,27 +237,20 @@ def upload_member_avatar(
     _admin: Member = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """
-    Upload avatar par un admin pour n'importe quel membre.
-    L'image est envoyée vers Google Cloud Storage.
-    La DB stocke l'URL publique GCS.
-    """
+    """Upload de l'avatar d'un membre par un admin (stocké en base)."""
     member = db.query(Member).filter(Member.id == member_id).first()
 
     if not member:
         raise HTTPException(status_code=404, detail="Membre introuvable")
 
     try:
-        image_bytes, ext = _decode_avatar_base64(data.image_b64)
-        public_url = upload_profile_picture(image_bytes, extension=ext)
-
-        member.avatar_url = public_url
-
+        image_bytes, _ext = _decode_avatar_base64(data.image_b64)
+        _store_avatar(member, image_bytes, db)
         db.commit()
         db.refresh(member)
-
         return member
-
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Upload invalide : {e}")
 

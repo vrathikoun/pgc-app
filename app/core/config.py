@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     PRICE_TWO_PER_WEEK_CENTS: int = 6500  # 65 € 2 cours/semaine
     # Lien envoyé par email après paiement pour créer son compte (app web).
     SIGNUP_URL: str = "https://app.polograpplingclub.com"
+    # URL publique de l'API (pour construire les liens d'avatars servis en base).
+    PUBLIC_API_URL: str = "https://pgc-app.onrender.com"
 
     class Config:
         env_file = ".env"
