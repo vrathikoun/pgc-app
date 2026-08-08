@@ -217,20 +217,17 @@ class MainShell extends StatelessWidget {
     final isAdmin = context.watch<AuthProvider>().member?.isAdmin ?? false;
     final hasAcademyAccess = context.watch<AuthProvider>().member?.subscriptionPlan == 'unlimited';
 
-    // Onglets et routes construits ensemble : les index restent alignés même
-    // quand Academy ou Admin sont masqués.
-    final tabs = <_NavItem>[
-      _NavItem(Icons.fitness_center, 'Courses', '/courses'),
-      _NavItem(Icons.calendar_today, 'Schedule', '/schedule'),
-      _NavItem(Icons.bookmark, 'Bookings', '/bookings'),
-      _NavItem(Icons.person, 'Profile', '/profile'),
+    // Onglets latéraux (la carte QR est un bouton central mis en avant, à part).
+    final sideTabs = <_NavItem>[
+      _NavItem(Icons.fitness_center, 'Cours', '/courses'),
+      _NavItem(Icons.calendar_today, 'Planning', '/schedule'),
+      _NavItem(Icons.bookmark, 'Résas', '/bookings'),
+      _NavItem(Icons.person, 'Profil', '/profile'),
       if (hasAcademyAccess) _NavItem(Icons.school, 'Academy', '/academy'),
       if (isAdmin) _NavItem(Icons.admin_panel_settings, 'Admin', '/admin'),
     ];
 
     final location = GoRouterState.of(context).matchedLocation;
-    var selectedIndex = tabs.indexWhere((t) => location.startsWith(t.route));
-    if (selectedIndex < 0) selectedIndex = 0;
 
     return PopScope(
       // On intercepte toujours le retour système (bouton/geste Android) :
@@ -251,27 +248,7 @@ class MainShell extends StatelessWidget {
       },
       child: Scaffold(
         body: child,
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: BottomNavigationBar(
-                backgroundColor: AppColors.surface,
-                selectedItemColor: AppColors.gold,
-                unselectedItemColor: AppColors.muted,
-                type: BottomNavigationBarType.fixed,
-                currentIndex: selectedIndex,
-                onTap: (i) => context.go(tabs[i].route),
-                items: [
-                  for (final tab in tabs)
-                    BottomNavigationBarItem(icon: Icon(tab.icon), label: tab.label),
-                ],
-              ),
-            ),
-          ),
-        ),
+        bottomNavigationBar: _BottomBar(sideTabs: sideTabs, location: location),
       ),
     );
   }
@@ -283,4 +260,113 @@ class _NavItem {
   final String route;
 
   _NavItem(this.icon, this.label, this.route);
+}
+
+/// Barre du bas avec un bouton central « Ma carte » (QR) mis en avant :
+/// gros cercle doré qui ressort au-dessus de la barre.
+class _BottomBar extends StatelessWidget {
+  final List<_NavItem> sideTabs;
+  final String location;
+  const _BottomBar({required this.sideTabs, required this.location});
+
+  @override
+  Widget build(BuildContext context) {
+    // Répartit les onglets à gauche et à droite du bouton central.
+    final mid = (sideTabs.length / 2).ceil();
+    final left = sideTabs.sublist(0, mid);
+    final right = sideTabs.sublist(mid);
+    final cardActive = location.startsWith('/access/card');
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        height: 66,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            for (final t in left) Expanded(child: _sideItem(context, t)),
+            _CenterCardButton(
+              active: cardActive,
+              onTap: () => context.go('/access/card'),
+            ),
+            for (final t in right) Expanded(child: _sideItem(context, t)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sideItem(BuildContext context, _NavItem t) {
+    final active = location.startsWith(t.route);
+    final color = active ? AppColors.gold : AppColors.muted;
+    return InkWell(
+      onTap: () => context.go(t.route),
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(t.icon, color: color, size: 24),
+          const SizedBox(height: 3),
+          Text(t.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: color, fontSize: 10)),
+        ],
+      ),
+    );
+  }
+}
+
+class _CenterCardButton extends StatelessWidget {
+  final bool active;
+  final VoidCallback onTap;
+  const _CenterCardButton({required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 74,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Transform.translate(
+              offset: const Offset(0, -14), // ressort au-dessus de la barre
+              child: Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: active ? AppColors.gold : AppColors.darkGreen,
+                  border: Border.all(color: AppColors.bg, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.gold.withValues(alpha: 0.35),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.qr_code_2,
+                    color: active ? AppColors.bg : AppColors.text, size: 30),
+              ),
+            ),
+            Transform.translate(
+              offset: const Offset(0, -14),
+              child: Text('Ma carte',
+                  style: TextStyle(
+                      color: active ? AppColors.gold : AppColors.text,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
