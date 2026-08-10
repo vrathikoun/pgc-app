@@ -152,6 +152,7 @@ class ApiService {
     String? lastName,
     String? phone,
     String? beltRank,
+    String? emergencyContact,
   }) async {
     final res = await _Http.put(
       Uri.parse(ApiConfig.me),
@@ -161,6 +162,7 @@ class ApiService {
         if (lastName != null) 'last_name': lastName,
         if (phone != null) 'phone': phone,
         if (beltRank != null) 'belt_rank': beltRank,
+        if (emergencyContact != null) 'emergency_contact': emergencyContact,
       }),
     );
 

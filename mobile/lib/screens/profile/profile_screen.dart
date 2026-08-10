@@ -17,6 +17,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _uploading = false;
   bool _deleting = false;
 
+  Future<void> _editEmergencyContact() async {
+    final auth = context.read<AuthProvider>();
+    final ctrl = TextEditingController(text: auth.member?.emergencyContact ?? '');
+    final value = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Contact d’urgence',
+            style: TextStyle(color: AppColors.text)),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.phone,
+          autofocus: true,
+          style: const TextStyle(color: AppColors.text),
+          decoration: const InputDecoration(
+            hintText: 'Numéro de téléphone',
+            hintStyle: TextStyle(color: AppColors.muted),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler', style: TextStyle(color: AppColors.muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Enregistrer',
+                style: TextStyle(color: AppColors.gold)),
+          ),
+        ],
+      ),
+    );
+    if (value == null || !mounted) return;
+    try {
+      final updated = await auth.api.updateMe(emergencyContact: value);
+      await auth.refreshMember(updated);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Contact d’urgence mis à jour ✅'),
+            backgroundColor: AppColors.darkGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur : $e'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
+
   Future<void> _onAvatarUploaded(String base64Image) async {
     setState(() => _uploading = true);
     try {
@@ -138,15 +191,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     value: member.phone!,
                   ),
                 ],
-                if (member.emergencyContact != null &&
-                    member.emergencyContact!.isNotEmpty) ...[
-                  _Sep(),
-                  _InfoRow(
-                    icon: Icons.emergency,
-                    label: 'Contact d’urgence',
-                    value: member.emergencyContact!,
-                  ),
-                ],
+                _Sep(),
+                _EditableRow(
+                  icon: Icons.emergency,
+                  label: 'Contact d’urgence',
+                  value: (member.emergencyContact?.isNotEmpty ?? false)
+                      ? member.emergencyContact!
+                      : 'Non renseigné',
+                  onEdit: _editEmergencyContact,
+                ),
               ]),
               const SizedBox(height: 24),
               SizedBox(
@@ -352,6 +405,47 @@ class _InfoCard extends StatelessWidget {
           border: Border.all(color: AppColors.border),
         ),
         child: Column(children: children),
+      );
+}
+
+class _EditableRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback onEdit;
+
+  const _EditableRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onEdit,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            children: [
+              Icon(icon, color: AppColors.gold, size: 20),
+              const SizedBox(width: 14),
+              Text(label,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+              const Spacer(),
+              Flexible(
+                child: Text(value,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: AppColors.text,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14)),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.edit, color: AppColors.muted, size: 18),
+            ],
+          ),
+        ),
       );
 }
 
