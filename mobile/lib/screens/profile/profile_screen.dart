@@ -121,8 +121,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _InfoRow(
                   icon: Icons.card_membership,
                   label: 'Abonnement',
-                  value: _subLabel(member.subscriptionPlan),
-                  valueColor: _subColor(member.subscriptionPlan),
+                  value: _planLabel(member.subscriptionPlan),
+                  valueColor: AppColors.gold,
                 ),
                 _Sep(),
                 _InfoRow(
@@ -276,20 +276,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return '$base/$clean';
   }
 
-  String _subLabel(String s) => const {
-        'active': '✅ Actif',
-        'inactive': '❌ Inactif',
-        'trial': '🎁 Période d\'essai',
-        'suspended': '⚠️ Suspendu',
-      }[s] ??
-      s;
-
-  Color _subColor(String s) => switch (s) {
-        'active' => AppColors.green,
-        'trial' => AppColors.gold,
-        'suspended' => Colors.orange,
-        _ => AppColors.danger,
-      };
+  // Libellé du plan d'abonnement (mêmes valeurs que la page admin).
+  String _planLabel(String plan) => const {
+        'unlimited': '♾️ Illimité',
+        'two_per_week': '2 cours / semaine',
+      }[plan] ??
+      plan;
 
   String _roleLabel(String r) =>
       const {'admin': '👑 Admin', 'coach': '🥊 Coach', 'member': '🏋️ Membre'}[r] ?? r;
