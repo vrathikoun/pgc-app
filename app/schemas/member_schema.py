@@ -18,6 +18,7 @@ class MemberCreate(BaseModel):
     first_name: str
     last_name: str
     phone: Optional[str] = None
+    emergency_contact: Optional[str] = None
 
     _validate_password = field_validator("password")(validate_password_72_bytes)
 
@@ -26,6 +27,7 @@ class MemberUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
+    emergency_contact: Optional[str] = None
     avatar_url: Optional[str] = None
     belt_rank: Optional[str] = None
     weekly_booking_limit: Optional[int] = None
@@ -46,6 +48,7 @@ class MemberOut(BaseModel):
     first_name: str
     last_name: str
     phone: Optional[str]
+    emergency_contact: Optional[str] = None
     avatar_url: Optional[str]
     belt_rank: Optional[BeltRank] | Optional[str] = None
     role: MemberRole

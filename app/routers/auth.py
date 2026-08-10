@@ -116,6 +116,7 @@ def register(
         first_name=data.first_name,
         last_name=data.last_name,
         phone=data.phone,
+        emergency_contact=data.emergency_contact,
     )
     db.add(member)
     db.commit()

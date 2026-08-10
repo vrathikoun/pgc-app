@@ -4,6 +4,7 @@ class Member {
   final String firstName;
   final String lastName;
   final String? phone;
+  final String? emergencyContact;
   final String? avatarUrl;
   final String? beltRank;
   final String role;
@@ -18,6 +19,7 @@ class Member {
     required this.firstName,
     required this.lastName,
     this.phone,
+    this.emergencyContact,
     this.avatarUrl,
     this.beltRank,
     required this.role,
@@ -46,6 +48,7 @@ class Member {
       firstName: json['first_name'] ?? '',
       lastName: json['last_name'] ?? '',
       phone: json['phone'],
+      emergencyContact: json['emergency_contact'],
       avatarUrl: json['avatar_url'],
       beltRank: json['belt_rank']?.toString(),
       role: json['role'] ?? 'member',
@@ -65,6 +68,7 @@ class Member {
       'first_name': firstName,
       'last_name': lastName,
       'phone': phone,
+      'emergency_contact': emergencyContact,
       'avatar_url': avatarUrl,
       'belt_rank': beltRank,
       'role': role,

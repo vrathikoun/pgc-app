@@ -84,6 +84,7 @@ class AuthProvider extends ChangeNotifier {
     required String password,
     required String firstName,
     required String lastName,
+    String? emergencyContact,
     bool rememberMe = true,
   }) async {
     _loading = true;
@@ -96,6 +97,7 @@ class AuthProvider extends ChangeNotifier {
         password: password,
         firstName: firstName,
         lastName: lastName,
+        emergencyContact: emergencyContact,
       );
 
       return await login(

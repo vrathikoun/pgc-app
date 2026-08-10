@@ -14,6 +14,7 @@ Base = declarative_base()
 # On ajoute donc ici les nouvelles colonnes à la main (syntaxe PostgreSQL).
 _LIGHTWEIGHT_MIGRATIONS = [
     "ALTER TABLE courses ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ",
+    "ALTER TABLE members ADD COLUMN IF NOT EXISTS emergency_contact VARCHAR",
 ]
 
 

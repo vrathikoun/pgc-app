@@ -138,6 +138,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     value: member.phone!,
                   ),
                 ],
+                if (member.emergencyContact != null &&
+                    member.emergencyContact!.isNotEmpty) ...[
+                  _Sep(),
+                  _InfoRow(
+                    icon: Icons.emergency,
+                    label: 'Contact d’urgence',
+                    value: member.emergencyContact!,
+                  ),
+                ],
               ]),
               const SizedBox(height: 24),
               SizedBox(

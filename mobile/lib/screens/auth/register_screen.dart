@@ -15,6 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _lastNameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _emergencyCtrl = TextEditingController();
   bool _obscure = true;
 
   @override
@@ -23,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _lastNameCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _emergencyCtrl.dispose();
     super.dispose();
   }
 
@@ -33,6 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passwordCtrl.text,
       firstName: _firstNameCtrl.text.trim(),
       lastName: _lastNameCtrl.text.trim(),
+      emergencyContact: _emergencyCtrl.text.trim(),
     );
     if (ok && mounted) context.go('/courses');
   }
@@ -101,6 +104,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
+              ),
+              const SizedBox(height: 16),
+              _buildField(
+                controller: _emergencyCtrl,
+                label: 'Contact d’urgence (téléphone)',
+                keyboardType: TextInputType.phone,
               ),
 
               if (auth.error != null)

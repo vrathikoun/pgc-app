@@ -105,6 +105,7 @@ class ApiService {
     required String firstName,
     required String lastName,
     String? phone,
+    String? emergencyContact,
   }) async {
     final res = await _Http.post(
       Uri.parse(ApiConfig.register),
@@ -115,6 +116,8 @@ class ApiService {
         'first_name': firstName,
         'last_name': lastName,
         if (phone != null) 'phone': phone,
+        if (emergencyContact != null && emergencyContact.isNotEmpty)
+          'emergency_contact': emergencyContact,
       }),
     );
 

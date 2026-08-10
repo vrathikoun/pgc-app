@@ -44,6 +44,7 @@ class Member(Base):
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     phone = Column(String, nullable=True)
+    emergency_contact = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
 
     # Niveau
