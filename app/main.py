@@ -75,22 +75,6 @@ def logo():
     return FileResponse(Path(__file__).parent / "static" / "logo.png")
 
 
-# Envoi de test de l'email post-paiement (temporaire).
-@app.get("/debug/send-signup", include_in_schema=False)
-def debug_send_signup(key: str = "", to: str = ""):
-    from fastapi import HTTPException
-
-    from app.services import email_service
-
-    if key != "pgc-diag-2026":
-        raise HTTPException(status_code=403, detail="cle invalide")
-    try:
-        email_service.send_signup_after_payment(to)
-        return {"sent_to": to, "status": "OK"}
-    except Exception as exc:  # noqa: BLE001
-        return {"sent_to": to, "status": f"{type(exc).__name__}: {exc}"}
-
-
 app.include_router(auth.router)
 app.include_router(members.router)
 app.include_router(courses.router)
