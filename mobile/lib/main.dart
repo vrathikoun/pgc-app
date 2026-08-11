@@ -220,7 +220,8 @@ class MainShell extends StatelessWidget {
     // Onglets latéraux (la carte QR est un bouton central mis en avant, à part).
     final sideTabs = <_NavItem>[
       _NavItem(Icons.fitness_center, 'Cours', '/courses'),
-      _NavItem(Icons.calendar_today, 'Planning', '/schedule'),
+      // Onglet Planning retiré de la barre (redondant) — route /schedule
+      // conservée, toujours accessible par le code.
       _NavItem(Icons.bookmark, 'Résas', '/bookings'),
       _NavItem(Icons.person, 'Profil', '/profile'),
       if (hasAcademyAccess) _NavItem(Icons.school, 'Academy', '/academy'),
