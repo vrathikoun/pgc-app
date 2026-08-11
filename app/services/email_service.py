@@ -18,6 +18,27 @@ from email.utils import formataddr
 from app.core.config import settings
 
 
+def _wrap(html: str) -> str:
+    """Enrobe le contenu dans un gabarit de marque (logo PGC en tête)."""
+    logo = f"{settings.PUBLIC_API_URL.rstrip('/')}/logo.png"
+    return f"""
+    <div style="background:#0B0C10;padding:28px 0;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
+      <div style="max-width:520px;margin:0 auto;background:#15161B;border-radius:20px;overflow:hidden">
+        <div style="text-align:center;padding:28px 0 8px">
+          <img src="{logo}" alt="Polo Grappling Club" width="72" height="72"
+               style="border-radius:16px" />
+          <div style="color:#D8B56D;font-weight:800;letter-spacing:1px;margin-top:8px">
+            POLO GRAPPLING CLUB
+          </div>
+        </div>
+        <div style="color:#F7F4EA;padding:8px 28px 28px;line-height:1.5">
+          {html}
+        </div>
+      </div>
+    </div>
+    """
+
+
 def _send(to: str, subject: str, html: str) -> None:
     """Fonction interne d'envoi — ne pas appeler directement depuis les routers."""
     # En mode DEBUG, on logue juste sans envoyer
@@ -30,7 +51,7 @@ def _send(to: str, subject: str, html: str) -> None:
     # Nom affiché dans la boîte du destinataire (ex. "Polo Grappling Club").
     msg["From"] = formataddr((settings.APP_NAME, settings.EMAIL_FROM))
     msg["To"] = to
-    msg.attach(MIMEText(html, "html"))
+    msg.attach(MIMEText(_wrap(html), "html"))
 
     with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
         server.starttls()

@@ -69,6 +69,12 @@ def support_page():
     return FileResponse(Path(__file__).parent / "static" / "support.html")
 
 
+# Logo PGC — utilisé notamment dans les emails transactionnels.
+@app.get("/logo.png", include_in_schema=False)
+def logo():
+    return FileResponse(Path(__file__).parent / "static" / "logo.png")
+
+
 app.include_router(auth.router)
 app.include_router(members.router)
 app.include_router(courses.router)
