@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     SIGNUP_URL: str = "https://app.polograpplingclub.com"
     # URL publique de l'API (pour construire les liens d'avatars servis en base).
     PUBLIC_API_URL: str = "https://pgc-app.onrender.com"
+    # Fiche App Store (lien de téléchargement iOS dans les emails).
+    APP_STORE_URL: str = "https://apps.apple.com/fr/app/id6795164799"
 
     class Config:
         env_file = ".env"

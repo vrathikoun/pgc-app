@@ -96,10 +96,18 @@ def send_signup_after_payment(email: str) -> None:
         subject="Paiement confirmé — active ton accès PGC 🥋",
         html=f"""
         <h2>Merci, ton paiement est confirmé !</h2>
-        <p>Dernière étape pour accéder aux cours : crée ton compte sur
-        l'application Polo Grappling Club <b>avec cette même adresse email</b>
-        ({email}). Ton QR code d'accès sera alors actif à l'accueil.</p>
-        <p><a href="{settings.SIGNUP_URL}">Créer mon compte</a></p>
+        <p>Dernière étape pour accéder aux cours : crée ton compte
+        <b>avec cette même adresse email</b> ({email}). Ton QR code d'accès
+        sera alors actif à l'accueil.</p>
+        <p style="margin:18px 0">
+          <b>📱 iPhone / iPad :</b>
+          <a href="{settings.APP_STORE_URL}">Télécharger sur l'App Store</a>
+        </p>
+        <p style="margin:18px 0">
+          <b>🤖 Android / ordinateur :</b>
+          <a href="{settings.SIGNUP_URL}">Ouvrir l'application web</a>
+          (fonctionne sur tous les appareils, tu peux l'ajouter à ton écran d'accueil)
+        </p>
         <p>À très vite sur les tatamis 💪</p>
         """,
     )
