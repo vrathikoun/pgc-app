@@ -56,7 +56,7 @@ class MemberOut(BaseModel):
     subscription_status: SubscriptionStatus
     weekly_booking_limit: Optional[int] = None
     created_at: datetime
-    subscription_plan: SubscriptionPlan
+    subscription_plan: Optional[SubscriptionPlan] = None
 
     model_config = {"from_attributes": True}
 

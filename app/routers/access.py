@@ -176,6 +176,6 @@ def verify_access(
         else str(member.subscription_status),
         subscription_plan=member.subscription_plan.value
         if hasattr(member.subscription_plan, "value")
-        else str(member.subscription_plan),
+        else str(member.subscription_plan or "aucun"),
         reason=reason,
     )

@@ -90,6 +90,16 @@ def check_member_access(member: Member, db: Session) -> tuple[bool, str]:
                     else SubscriptionStatus.active
                 )
                 _sync_member_status(member, new_status, db)
+                # Synchronise le plan + la limite hebdo d'après le tarif Stripe
+                # (fonctionne aussi pendant l'essai : le prix catalogue est connu).
+                plan, limit = _plan_for_amount(_subscription_amount(s))
+                if plan is not None and (
+                    member.subscription_plan != plan
+                    or member.weekly_booking_limit != limit
+                ):
+                    member.subscription_plan = plan
+                    member.weekly_booking_limit = limit
+                    db.commit()
                 end = datetime.fromtimestamp(period_end, tz=timezone.utc)
                 label = "Période d'essai" if status == "trialing" else "Abonnement actif"
                 return True, f"{label} jusqu'au {end:%d/%m/%Y}"

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.timezone import as_utc, fmt_paris, now_utc, paris_week_start
 from app.database import get_db
+from app.models.access_pass import AccessPass
 from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
 from app.models.member import Member, MemberRole
@@ -13,7 +14,7 @@ from app.routers.members import get_current_member, require_admin
 from app.schemas.booking_schema import BookingCreate, BookingOut
 from app.schemas.course_schema import CourseOut
 from app.schemas.member_schema import MemberOut
-from app.services import email_service, notification_service, waitlist_service
+from app.services import email_service, notification_service, stripe_service, waitlist_service
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -130,6 +131,27 @@ def create_booking(
     )
     if existing:
         raise HTTPException(status_code=400, detail="Vous êtes déjà inscrit à ce cours")
+
+    # Réserver exige d'être à jour : abonnement Stripe actif/essai (vérifié en
+    # direct, même contrôle que le QR à l'entrée), ou un pass « cours à
+    # l'unité » encore valide. Le staff (coach/admin) n'est pas concerné.
+    if current.role == MemberRole.member:
+        allowed, reason = stripe_service.check_member_access(current, db)
+        if not allowed:
+            has_pass = (
+                db.query(AccessPass)
+                .filter(
+                    AccessPass.email == current.email,
+                    AccessPass.consumed_at.is_(None),
+                    AccessPass.expires_at > _now_utc(),
+                )
+                .first()
+            )
+            if not has_pass:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Réservation impossible : {reason}",
+                )
 
     weekly_limit = getattr(current, "weekly_booking_limit", None)
     if weekly_limit is not None and weekly_limit > 0:

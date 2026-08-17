@@ -59,11 +59,9 @@ class Member(Base):
     subscription_status = Column(
         Enum(SubscriptionStatus), default=SubscriptionStatus.trial
     )
-    subscription_plan = Column(
-        Enum(SubscriptionPlan),
-        default=SubscriptionPlan.unlimited,
-        nullable=False,
-    )
+    # Pas de plan par défaut : il est fixé d'après ce que le membre paie
+    # réellement chez Stripe (webhook + check_member_access).
+    subscription_plan = Column(Enum(SubscriptionPlan), nullable=True)
 
     # Stripe
     stripe_customer_id = Column(String, nullable=True)
