@@ -342,6 +342,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _planLabel(String plan) => const {
         'unlimited': '♾️ Illimité',
         'two_per_week': '2 cours / semaine',
+        'none': 'Aucun abonnement',
       }[plan] ??
       plan;
 

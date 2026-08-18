@@ -53,7 +53,9 @@ class Member {
       beltRank: json['belt_rank']?.toString(),
       role: json['role'] ?? 'member',
       isActive: json['is_active'] ?? true,
-      subscriptionPlan: json['subscription_plan'] ?? 'unlimited',
+      // Pas de plan en base (compte pas encore payé) → 'none', jamais
+      // 'unlimited' (sinon tout non-payeur paraît illimité).
+      subscriptionPlan: json['subscription_plan'] ?? 'none',
       weeklyBookingLimit: json['weekly_booking_limit'],
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'])

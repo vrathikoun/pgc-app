@@ -51,11 +51,13 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
   };
 
   static const _subscriptionPlans = [
+    'none',
     'unlimited',
     'two_per_week',
   ];
 
   static const _subscriptionPlanLabels = {
+    'none': 'Aucun abonnement',
     'unlimited': '♾️ Illimité',
     'two_per_week': '2 cours / semaine',
   };
@@ -113,7 +115,9 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
         lastName: _lastNameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
         beltRank: _selectedBelt,
-        subscriptionPlan: _selectedSubscriptionPlan,
+        // 'none' n'existe pas côté API (plan NULL en base) : on n'envoie rien.
+        subscriptionPlan:
+            _selectedSubscriptionPlan == 'none' ? null : _selectedSubscriptionPlan,
       );
 
       if (_selectedRole != null && _selectedRole != _member!.role) {
