@@ -18,6 +18,27 @@ class _MemberAdminScreenState extends State<MemberAdminScreen> {
   List<Member> _members = [];
   bool _loading = true;
   String? _error;
+  String _search = '';
+  String? _beltFilter; // null = toutes
+
+  static const _beltLabels = {
+    'white': 'Blanche',
+    'blue': 'Bleue',
+    'purple': 'Violette',
+    'brown': 'Marron',
+    'black': 'Noire',
+  };
+
+  List<Member> get _filtered {
+    final q = _search.trim().toLowerCase();
+    return _members.where((m) {
+      if (_beltFilter != null && m.beltRank != _beltFilter) return false;
+      if (q.isEmpty) return true;
+      return m.firstName.toLowerCase().contains(q) ||
+          m.lastName.toLowerCase().contains(q) ||
+          m.email.toLowerCase().contains(q);
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -72,10 +93,55 @@ class _MemberAdminScreenState extends State<MemberAdminScreen> {
               subtitle: 'Member, coach ou admin.',
             ),
             const SizedBox(height: 20),
+            TextField(
+              onChanged: (v) => setState(() => _search = v),
+              decoration: InputDecoration(
+                hintText: 'Rechercher (nom, prénom, email)…',
+                prefixIcon: const Icon(Icons.search, color: AppColors.muted),
+                filled: true,
+                fillColor: AppColors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('Toutes'),
+                    selected: _beltFilter == null,
+                    onSelected: (_) => setState(() => _beltFilter = null),
+                  ),
+                  ..._beltLabels.entries.map(
+                    (e) => Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: ChoiceChip(
+                        label: Text(e.value),
+                        selected: _beltFilter == e.key,
+                        onSelected: (_) => setState(() => _beltFilter = e.key),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             if (_loading) const Center(child: CircularProgressIndicator()),
+            if (!_loading && _error == null && _filtered.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 24),
+                child: Center(
+                  child: Text('Aucun membre ne correspond',
+                      style: TextStyle(color: AppColors.muted)),
+                ),
+              ),
             if (_error != null) Text(_error!, style: const TextStyle(color: AppColors.danger)),
             if (!_loading)
-              ..._members.map(
+              ..._filtered.map(
                 (m) => GestureDetector(
                   onTap: () => context.push('/admin/members/${m.id}'),
                   child: Container(
