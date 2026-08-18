@@ -231,6 +231,15 @@ class ApiService {
     _checkStatus(res);
   }
 
+  /// Suppression définitive d'un membre par un admin (données incluses).
+  Future<void> deleteMember(int memberId) async {
+    final res = await _Http.delete(
+      Uri.parse(_joinUrl(ApiConfig.members, '$memberId')),
+      headers: _headers,
+    );
+    _checkStatus(res);
+  }
+
   Future<Member> uploadMyAvatar(String base64Image) async {
     final res = await _Http.post(
       Uri.parse(_joinUrl(ApiConfig.baseUrl, 'members/me/avatar')),
@@ -347,6 +356,7 @@ class ApiService {
     String? firstName,
     String? lastName,
     String? phone,
+    String? emergencyContact,
     String? beltRank,
     String? subscriptionPlan,
   }) async {
@@ -357,6 +367,7 @@ class ApiService {
         if (firstName != null) 'first_name': firstName,
         if (lastName != null) 'last_name': lastName,
         if (phone != null) 'phone': phone,
+        if (emergencyContact != null) 'emergency_contact': emergencyContact,
         if (beltRank != null) 'belt_rank': beltRank,
         if (subscriptionPlan != null) 'subscription_plan': subscriptionPlan,
         if (subscriptionPlan == 'two_per_week') 'weekly_booking_limit': 2,

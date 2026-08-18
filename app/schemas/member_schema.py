@@ -18,9 +18,17 @@ class MemberCreate(BaseModel):
     first_name: str
     last_name: str
     phone: Optional[str] = None
-    emergency_contact: Optional[str] = None
+    emergency_contact: str
 
     _validate_password = field_validator("password")(validate_password_72_bytes)
+
+    @field_validator("emergency_contact")
+    @classmethod
+    def _emergency_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Le contact d'urgence est obligatoire")
+        return v
 
 
 class MemberUpdate(BaseModel):

@@ -27,6 +27,7 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _emergencyCtrl = TextEditingController();
 
   String? _selectedRole;
   String? _selectedBelt;
@@ -73,6 +74,7 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _phoneCtrl.dispose();
+    _emergencyCtrl.dispose();
     super.dispose();
   }
 
@@ -91,6 +93,7 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
       _firstNameCtrl.text = member.firstName;
       _lastNameCtrl.text = member.lastName;
       _phoneCtrl.text = member.phone ?? '';
+      _emergencyCtrl.text = member.emergencyContact ?? '';
       _selectedRole = member.role;
       _selectedBelt = member.beltRank ?? 'white';
       _selectedSubscriptionPlan = member.subscriptionPlan;
@@ -114,6 +117,9 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
         firstName: _firstNameCtrl.text.trim(),
         lastName: _lastNameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+        emergencyContact: _emergencyCtrl.text.trim().isEmpty
+            ? null
+            : _emergencyCtrl.text.trim(),
         beltRank: _selectedBelt,
         // 'none' n'existe pas côté API (plan NULL en base) : on n'envoie rien.
         subscriptionPlan:
@@ -304,6 +310,12 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
               controller: _phoneCtrl,
               keyboardType: TextInputType.phone,
             ),
+            const SizedBox(height: 12),
+            _Field(
+              label: 'Contact d’urgence',
+              controller: _emergencyCtrl,
+              keyboardType: TextInputType.phone,
+            ),
           ]),
 
           const SizedBox(height: 20),
@@ -383,9 +395,70 @@ class _MemberProfileAdminScreenState extends State<MemberProfileAdminScreen> {
                   : const Text('Enregistrer les modifications'),
             ),
           ),
+
+          const SizedBox(height: 16),
+
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.danger,
+                side: const BorderSide(color: AppColors.danger),
+              ),
+              onPressed: _saving ? null : _confirmDelete,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Supprimer ce membre'),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDelete() async {
+    final member = _member!;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer ce membre ?'),
+        content: Text(
+          '${member.firstName} ${member.lastName} (${member.email}) sera '
+          'définitivement supprimé, avec ses réservations et ses données. '
+          'Cette action est irréversible.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _saving = true);
+    try {
+      await context.read<AuthProvider>().api.deleteMember(member.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Membre supprimé')),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur : $e')),
+        );
+      }
+    }
   }
 }
 

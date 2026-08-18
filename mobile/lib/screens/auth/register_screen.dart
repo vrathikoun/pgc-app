@@ -17,6 +17,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordCtrl = TextEditingController();
   final _emergencyCtrl = TextEditingController();
   bool _obscure = true;
+  String? _fieldError;
 
   @override
   void dispose() {
@@ -29,6 +30,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _submit() async {
+    // Contact d'urgence obligatoire (sécurité : sport de combat).
+    if (_emergencyCtrl.text.trim().isEmpty) {
+      setState(() => _fieldError =
+          'Le contact d\'urgence est obligatoire (personne à prévenir).');
+      return;
+    }
+    setState(() => _fieldError = null);
     final auth = context.read<AuthProvider>();
     final ok = await auth.register(
       email: _emailCtrl.text.trim(),
@@ -108,10 +116,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 16),
               _buildField(
                 controller: _emergencyCtrl,
-                label: 'Contact d’urgence (téléphone)',
+                label: 'Contact d’urgence (téléphone) *',
                 keyboardType: TextInputType.phone,
               ),
 
+              if (_fieldError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(_fieldError!,
+                      style: const TextStyle(color: Colors.redAccent)),
+                ),
               if (auth.error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),

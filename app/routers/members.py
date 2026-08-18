@@ -296,6 +296,34 @@ def update_member(
     return member
 
 
+def _purge_member(member: Member, db: Session) -> None:
+    """Supprime définitivement un membre et toutes ses données liées (FK).
+
+    Si le membre était coach d'un cours, on détache la référence pour ne pas
+    casser le planning.
+    """
+    from app.models.access_pass import AccessPass
+    from app.models.booking import Booking
+    from app.models.course import Course
+    from app.models.device_token import DeviceToken
+    from app.models.member_avatar import MemberAvatar
+    from app.models.password_reset import PasswordReset
+    from app.models.subscription import Subscription
+
+    for model in (
+        Booking, DeviceToken, Subscription,
+        AccessPass, PasswordReset, MemberAvatar,
+    ):
+        db.query(model).filter(model.member_id == member.id).delete(
+            synchronize_session=False
+        )
+    db.query(Course).filter(Course.coach_id == member.id).update(
+        {Course.coach_id: None}, synchronize_session=False
+    )
+    db.delete(member)
+    db.commit()
+
+
 @router.delete("/me", status_code=204)
 def delete_my_account(
     current: Member = Depends(get_current_member),
@@ -305,46 +333,27 @@ def delete_my_account(
 
     Exigence App Store (Guideline 5.1.1(v)) : un membre doit pouvoir supprimer
     lui-même son compte depuis l'app. On supprime réellement les données (pas
-    une simple désactivation) : réservations, jetons de notification,
-    abonnements, puis le membre. Si le membre était coach d'un cours, on
-    détache la référence pour ne pas casser le planning.
+    une simple désactivation).
     """
-    from app.models.booking import Booking
-    from app.models.course import Course
-    from app.models.device_token import DeviceToken
-    from app.models.subscription import Subscription
-
-    db.query(Booking).filter(Booking.member_id == current.id).delete(
-        synchronize_session=False
-    )
-    db.query(DeviceToken).filter(DeviceToken.member_id == current.id).delete(
-        synchronize_session=False
-    )
-    db.query(Subscription).filter(Subscription.member_id == current.id).delete(
-        synchronize_session=False
-    )
-    db.query(Course).filter(Course.coach_id == current.id).update(
-        {Course.coach_id: None}, synchronize_session=False
-    )
-
-    db.delete(current)
-    db.commit()
+    _purge_member(current, db)
     return None
 
 
 @router.delete("/{member_id}", status_code=204)
-def deactivate_member(
+def delete_member(
     member_id: int,
-    _admin: Member = Depends(require_admin),
+    admin: Member = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
+    """Suppression définitive d'un membre par un admin (données incluses)."""
+    if member_id == admin.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Utilise la suppression de ton propre compte depuis ton profil",
+        )
     member = db.query(Member).filter(Member.id == member_id).first()
-
     if not member:
         raise HTTPException(status_code=404, detail="Membre introuvable")
 
-    member.is_active = False
-
-    db.commit()
-
+    _purge_member(member, db)
     return None
