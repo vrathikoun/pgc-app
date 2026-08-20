@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, field_validator
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -63,7 +64,7 @@ def forgot_password(
 
     Répond toujours 202, que l'email existe ou non (pas d'énumération de comptes).
     """
-    member = db.query(Member).filter(Member.email == data.email).first()
+    member = db.query(Member).filter(func.lower(Member.email) == data.email.lower()).first()
     if member:
         # Invalide les codes précédents.
         db.query(PasswordReset).filter(
@@ -90,7 +91,7 @@ def forgot_password(
 @router.post("/reset-password")
 def reset_password(data: ResetPasswordIn, db: Session = Depends(get_db)):
     """Réinitialise le mot de passe avec le code reçu par email."""
-    member = db.query(Member).filter(Member.email == data.email).first()
+    member = db.query(Member).filter(func.lower(Member.email) == data.email.lower()).first()
     if not member:
         raise HTTPException(status_code=400, detail="Code invalide ou expiré")
 
@@ -124,11 +125,11 @@ def register(
     db: Session = Depends(get_db),
 ):
     """Inscription d'un nouveau membre."""
-    if db.query(Member).filter(Member.email == data.email).first():
+    if db.query(Member).filter(func.lower(Member.email) == data.email.lower()).first():
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
 
     member = Member(
-        email=data.email,
+        email=data.email.lower(),
         hashed_password=hash_password(data.password),
         first_name=data.first_name,
         last_name=data.last_name,
@@ -148,7 +149,7 @@ def register(
 @router.post("/login", response_model=TokenOut)
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     """Connexion — retourne un JWT."""
-    member = db.query(Member).filter(Member.email == data.email).first()
+    member = db.query(Member).filter(func.lower(Member.email) == data.email.lower()).first()
     if not member or not verify_password(data.password, member.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -168,7 +169,7 @@ def token_swagger(
 ):
     """Endpoint OAuth2 utilisé uniquement par le bouton Authorize de Swagger.
     Le champ 'username' correspond à l'email."""
-    member = db.query(Member).filter(Member.email == form.username).first()
+    member = db.query(Member).filter(func.lower(Member.email) == form.username.lower()).first()
     if not member or not verify_password(form.password, member.hashed_password):
         raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect")
     if not member.is_active:
