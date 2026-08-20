@@ -18,6 +18,12 @@ _LIGHTWEIGHT_MIGRATIONS = [
     # Le plan n'a plus de valeur par défaut : il vient de Stripe.
     "ALTER TABLE members ALTER COLUMN subscription_plan DROP NOT NULL",
     "ALTER TABLE members ALTER COLUMN subscription_plan DROP DEFAULT",
+    # Emails insensibles à la casse au niveau SQL (citext) : toute comparaison
+    # (login, webhook Stripe, pass d'accès…) ignore les majuscules, même dans
+    # du code futur qui oublierait de normaliser.
+    "CREATE EXTENSION IF NOT EXISTS citext",
+    "ALTER TABLE members ALTER COLUMN email TYPE citext",
+    "ALTER TABLE access_passes ALTER COLUMN email TYPE citext",
 ]
 
 

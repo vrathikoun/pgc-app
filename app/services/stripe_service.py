@@ -73,6 +73,20 @@ def check_member_access(member: Member, db: Session) -> tuple[bool, str]:
                 customer_id = found.data[0].id
                 member.stripe_customer_id = customer_id
                 db.commit()
+            else:
+                # La recherche Stripe est sensible à la casse : rescanne en
+                # comparant en minuscules (le client a pu saisir une majuscule
+                # sur la page de paiement).
+                # ponytail: scan complet des clients, OK jusqu'à quelques
+                # milliers ; passer à Customer.search si le club grossit.
+                target = (member.email or "").lower()
+                for cu in stripe.Customer.list(limit=100).auto_paging_iter():
+                    cu_email = _sub_field(cu, "email")
+                    if (cu_email or "").lower() == target:
+                        customer_id = cu["id"]
+                        member.stripe_customer_id = customer_id
+                        db.commit()
+                        break
 
         if not customer_id:
             _sync_member_status(member, SubscriptionStatus.inactive, db)
