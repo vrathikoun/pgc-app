@@ -17,7 +17,24 @@ from app.schemas.member_schema import (
     validate_password_72_bytes,
 )
 from app.core.security import create_access_token, hash_password, verify_password
-from app.services import email_service
+from app.services import email_service, stripe_service
+
+
+def _sync_stripe_plan(member_id: int) -> None:
+    """Après inscription : si le membre a déjà payé chez Stripe (cas « paie
+    d'abord, crée son compte ensuite »), récupère plan/limite/statut tout de
+    suite au lieu d'attendre sa première réservation ou son premier scan QR."""
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        member = db.query(Member).filter(Member.id == member_id).first()
+        if member:
+            stripe_service.check_member_access(member, db)
+    except Exception as exc:  # best effort — l'inscription est déjà faite
+        print(f"[REGISTER] sync Stripe échouée pour membre {member_id} : {exc}")
+    finally:
+        db.close()
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -124,6 +141,7 @@ def register(
     # E-mail de bienvenue envoyé en tâche de fond : un SMTP lent ou en échec ne
     # doit ni bloquer ni faire échouer l'inscription (le compte est déjà créé).
     background_tasks.add_task(email_service.send_welcome, member.first_name, member.email)
+    background_tasks.add_task(_sync_stripe_plan, member.id)
     return member
 
 
