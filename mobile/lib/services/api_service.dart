@@ -666,7 +666,8 @@ class ApiService {
     _checkStatus(res);
   }
 
-  Future<List<Member>> getCourseBookings(int courseId) async {
+  /// Inscrits d'un cours — réservé au coach assigné et aux admins (403 sinon).
+  Future<List<CourseParticipant>> getCourseBookings(int courseId) async {
     final res = await _Http.get(
       Uri.parse(_joinUrl(ApiConfig.bookings, 'course/$courseId')),
       headers: _headers,
@@ -677,7 +678,7 @@ class ApiService {
     final data = _parseBody(res);
     if (data is! List) return [];
 
-    return data.map((e) => Member.fromJson(e)).toList();
+    return data.map((e) => CourseParticipant.fromJson(e)).toList();
   }
 
   // ── Push notifications ──────────────────────────────────────────────

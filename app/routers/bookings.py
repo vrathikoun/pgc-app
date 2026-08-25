@@ -11,7 +11,7 @@ from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
 from app.models.member import Member, MemberRole
 from app.routers.members import get_current_member, require_admin
-from app.schemas.booking_schema import BookingCreate, BookingOut
+from app.schemas.booking_schema import BookingCreate, BookingOut, ParticipantOut
 from app.schemas.course_schema import CourseOut
 from app.schemas.member_schema import MemberOut
 from app.services import email_service, notification_service, stripe_service, waitlist_service
@@ -236,12 +236,13 @@ def cancel_booking(
     return _enrich_booking(booking, db)
 
 
-@router.get("/course/{course_id}", response_model=List[BookingOut])
+@router.get("/course/{course_id}", response_model=List[ParticipantOut])
 def course_bookings(
     course_id: int,
     current: Member = Depends(get_current_member),
     db: Session = Depends(get_db),
 ):
+    """Liste des inscrits d'un cours — réservée au coach assigné et aux admins."""
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Cours introuvable")
@@ -251,10 +252,24 @@ def course_bookings(
     if not (is_admin or is_assigned_coach):
         raise HTTPException(status_code=403, detail="Accès réservé au coach du cours ou aux admins")
 
-    bookings = (
-        db.query(Booking)
-        .filter(Booking.course_id == course_id)
+    rows = (
+        db.query(Booking, Member)
+        .join(Member, Booking.member_id == Member.id)
+        .filter(
+            Booking.course_id == course_id,
+            Booking.status.in_([BookingStatus.confirmed, BookingStatus.waitlist]),
+        )
         .order_by(Booking.booked_at)
         .all()
     )
-    return [_enrich_booking(booking, db) for booking in bookings]
+    # Confirmés d'abord, puis liste d'attente (dans l'ordre d'arrivée).
+    rows.sort(key=lambda bm: bm[0].status != BookingStatus.confirmed)
+    return [
+        ParticipantOut(
+            first_name=m.first_name,
+            last_name=m.last_name,
+            avatar_url=m.avatar_url,
+            status=b.status,
+        )
+        for b, m in rows
+    ]

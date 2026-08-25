@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'package:pgc_app/models/booking.dart';
 import 'package:pgc_app/models/course.dart';
+import 'package:pgc_app/models/member.dart';
 import 'package:pgc_app/providers/auth_provider.dart';
 import 'package:pgc_app/services/api_service.dart';
 import 'package:pgc_app/theme/app_theme.dart';
@@ -22,6 +23,7 @@ class CourseDetailScreen extends StatefulWidget {
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
   Course? _course;
   Booking? _myBooking; // réservation active (confirmée ou liste d'attente)
+  List<CourseParticipant>? _participants; // visible coach du cours / admin
   bool _loading = true;
   bool _booking = false;
   bool _cancelling = false;
@@ -58,10 +60,19 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           }
         }
       } catch (_) {}
+      // Liste des inscrits : coach assigné au cours ou admin uniquement.
+      List<CourseParticipant>? participants;
+      final me = context.read<AuthProvider>().member;
+      if (me != null && (me.isAdmin || (me.isCoach && course.coachId == me.id))) {
+        try {
+          participants = await api.getCourseBookings(widget.courseId);
+        } catch (_) {}
+      }
       if (!mounted) return;
       setState(() {
         _course = course;
         _myBooking = mine;
+        _participants = participants;
         _loading = false;
       });
     } catch (e) {
@@ -239,6 +250,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               _InfoRow(Icons.group, '${course.spotsAvailable ?? '-'} places restantes / ${course.maxCapacity}'),
             ],
           ),
+          // Liste des inscrits — uniquement chargée pour le coach du cours/admin.
+          if (_participants != null) ...[
+            const SizedBox(height: 18),
+            _ParticipantsCard(participants: _participants!),
+          ],
           const SizedBox(height: 18),
           if (_error != null)
             _MessageBox(text: _error!, color: AppColors.danger)
@@ -341,6 +357,75 @@ class _CoachCard extends StatelessWidget {
             const Icon(Icons.chevron_right, color: AppColors.gold),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ParticipantsCard extends StatelessWidget {
+  final List<CourseParticipant> participants;
+  const _ParticipantsCard({required this.participants});
+
+  @override
+  Widget build(BuildContext context) {
+    final confirmed = participants.where((p) => !p.isWaitlist).length;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'INSCRITS ($confirmed)',
+            style: const TextStyle(
+              color: AppColors.gold,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (participants.isEmpty)
+            const Text('Personne pour le moment',
+                style: TextStyle(color: AppColors.muted)),
+          ...participants.map(
+            (p) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  PgcAvatar(
+                    avatarUrl: p.avatarUrl,
+                    initials:
+                        '${p.firstName.isNotEmpty ? p.firstName[0] : ''}${p.lastName.isNotEmpty ? p.lastName[0] : ''}',
+                    radius: 16,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(p.fullName,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                  if (p.isWaitlist)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold.withOpacity(.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text('Liste d’attente',
+                          style: TextStyle(
+                              color: AppColors.gold, fontSize: 11)),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

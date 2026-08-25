@@ -81,3 +81,20 @@ class Member {
     };
   }
 }
+
+/// Inscrit d'un cours vu par le coach/admin — données minimisées côté API.
+class CourseParticipant {
+  final String firstName;
+  final String lastName;
+  final String? avatarUrl;
+  final String status; // confirmed | waitlist
+
+  CourseParticipant.fromJson(Map<String, dynamic> json)
+      : firstName = json['first_name'] ?? '',
+        lastName = json['last_name'] ?? '',
+        avatarUrl = json['avatar_url'],
+        status = json['status'] ?? 'confirmed';
+
+  bool get isWaitlist => status == 'waitlist';
+  String get fullName => '$firstName $lastName'.trim();
+}

@@ -7,6 +7,15 @@ from app.models.booking import BookingStatus
 from app.schemas.course_schema import CourseOut
 
 
+class ParticipantOut(BaseModel):
+    """Inscrit d'un cours vu par le coach/admin — données minimisées
+    (ni email, ni téléphone, ni abonnement : RGPD)."""
+    first_name: str
+    last_name: str
+    avatar_url: Optional[str] = None
+    status: BookingStatus
+
+
 class BookingCreate(BaseModel):
     course_id: int
 
