@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # Montants Stripe (centimes) → mapping abonnement. Adapter si tes tarifs changent.
     PRICE_UNLIMITED_CENTS: int = 9000    # 90 € illimité
     PRICE_TWO_PER_WEEK_CENTS: int = 6500  # 65 € 2 cours/semaine
+    # Pass mensuels sans engagement (paiement unique, 30 jours glissants).
+    PRICE_MONTH_UNLIMITED_CENTS: int = 15000     # 150 € illimité 1 mois
+    PRICE_MONTH_TWO_PER_WEEK_CENTS: int = 10000  # 100 € 2 cours/sem 1 mois
+    MONTH_PASS_VALIDITY_DAYS: int = 30
     # Lien envoyé par email après paiement pour créer son compte (app web).
     SIGNUP_URL: str = "https://app.polograpplingclub.com"
     # URL publique de l'API (pour construire les liens d'avatars servis en base).

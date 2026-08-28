@@ -17,6 +17,11 @@ class AccessPass(Base):
     email = Column(String, index=True, nullable=False)
     member_id = Column(Integer, ForeignKey("members.id"), nullable=True)
 
+    # drop_in : 1 entrée, consommé au scan (défaut historique).
+    # month_unlimited / month_two_per_week : multi-entrées pendant 30 jours,
+    # jamais consommé, renouvellement manuel (repayer le lien).
+    pass_type = Column(String, nullable=False, default="drop_in")
+
     expires_at = Column(DateTime(timezone=True), nullable=False)
     consumed_at = Column(DateTime(timezone=True), nullable=True)
 

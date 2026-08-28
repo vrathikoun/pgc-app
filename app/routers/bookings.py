@@ -2,6 +2,7 @@ from datetime import timedelta
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.timezone import as_utc, fmt_paris, now_utc, paris_week_start
@@ -133,27 +134,39 @@ def create_booking(
         raise HTTPException(status_code=400, detail="Vous êtes déjà inscrit à ce cours")
 
     # Réserver exige d'être à jour : abonnement Stripe actif/essai (vérifié en
-    # direct, même contrôle que le QR à l'entrée), ou un pass « cours à
-    # l'unité » encore valide. Le staff (coach/admin) n'est pas concerné.
+    # direct, même contrôle que le QR à l'entrée), ou un pass encore valide
+    # (mensuel multi-entrées, ou à l'unité non consommé). Le staff est exempté.
+    month_pass_limit = None
     if current.role == MemberRole.member:
         allowed, reason = stripe_service.check_member_access(current, db)
         if not allowed:
-            has_pass = (
+            gate_pass = (
                 db.query(AccessPass)
                 .filter(
                     AccessPass.email == current.email,
-                    AccessPass.consumed_at.is_(None),
                     AccessPass.expires_at > _now_utc(),
+                    or_(
+                        AccessPass.pass_type != "drop_in",
+                        AccessPass.consumed_at.is_(None),
+                    ),
                 )
+                .order_by(AccessPass.expires_at.desc())
                 .first()
             )
-            if not has_pass:
+            if gate_pass is None:
                 raise HTTPException(
                     status_code=403,
                     detail=f"Réservation impossible : {reason}",
                 )
+            if gate_pass.pass_type == "month_two_per_week":
+                month_pass_limit = 2
 
     weekly_limit = getattr(current, "weekly_booking_limit", None)
+    if month_pass_limit is not None:
+        weekly_limit = (
+            month_pass_limit if weekly_limit is None
+            else min(weekly_limit, month_pass_limit)
+        )
     if weekly_limit is not None and weekly_limit > 0:
         # Semaine civile de Paris du cours visé.
         week_start = paris_week_start(_as_aware_utc(course.start_time))

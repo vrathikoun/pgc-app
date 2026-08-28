@@ -82,10 +82,28 @@ def _check_and_consume_pass(member: Member, db: Session) -> tuple[bool, str]:
     """
     now = datetime.now(timezone.utc)
 
+    # Pass mensuel (multi-entrées, jamais consommé) : prioritaire.
+    month = (
+        db.query(AccessPass)
+        .filter(
+            AccessPass.email == member.email,
+            AccessPass.pass_type.in_(("month_unlimited", "month_two_per_week")),
+            AccessPass.expires_at > now,
+        )
+        .order_by(AccessPass.expires_at.desc())
+        .first()
+    )
+    if month:
+        label = (
+            "illimité" if month.pass_type == "month_unlimited" else "2 cours/sem"
+        )
+        return True, f"Pass mensuel {label} — valable jusqu'au {month.expires_at:%d/%m}"
+
     pass_valide = (
         db.query(AccessPass)
         .filter(
             AccessPass.email == member.email,
+            AccessPass.pass_type == "drop_in",
             AccessPass.consumed_at.is_(None),
             AccessPass.expires_at > now,
         )
@@ -103,6 +121,7 @@ def _check_and_consume_pass(member: Member, db: Session) -> tuple[bool, str]:
         db.query(AccessPass)
         .filter(
             AccessPass.email == member.email,
+            AccessPass.pass_type == "drop_in",
             AccessPass.consumed_at.isnot(None),
             AccessPass.consumed_at > now - timedelta(hours=4),
         )

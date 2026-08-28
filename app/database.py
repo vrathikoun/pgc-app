@@ -24,6 +24,8 @@ _LIGHTWEIGHT_MIGRATIONS = [
     "CREATE EXTENSION IF NOT EXISTS citext",
     "ALTER TABLE members ALTER COLUMN email TYPE citext",
     "ALTER TABLE access_passes ALTER COLUMN email TYPE citext",
+    # Pass mensuels (paiement unique 1 mois) en plus des pass à l'unité.
+    "ALTER TABLE access_passes ADD COLUMN IF NOT EXISTS pass_type VARCHAR NOT NULL DEFAULT 'drop_in'",
 ]
 
 

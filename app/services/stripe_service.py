@@ -312,9 +312,10 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
             "customer_email"
         )
         if email and session.get("mode") == "payment":
-            _create_drop_in_pass(
+            _create_pass_for_payment(
                 email,
                 session.get("payment_intent") or session.get("id"),
+                session.get("amount_total"),
                 db,
             )
             _safe_send_signup(email)
@@ -358,8 +359,13 @@ def _plan_for_amount(amount):
     return None, None
 
 
-def _create_drop_in_pass(email: str, payment_id, db: Session) -> None:
-    """Crée un pass à l'unité (idempotent sur le paiement)."""
+def _create_pass_for_payment(email: str, payment_id, amount_total, db: Session) -> None:
+    """Crée le pass correspondant à un paiement unique (idempotent).
+
+    150 € → pass mensuel illimité ; 100 € → pass mensuel 2 cours/semaine
+    (30 jours glissants, multi-entrées) ; tout autre montant → pass à l'unité
+    (7 jours, consommé au 1er scan).
+    """
     if payment_id:
         exists = (
             db.query(AccessPass)
@@ -368,19 +374,27 @@ def _create_drop_in_pass(email: str, payment_id, db: Session) -> None:
         )
         if exists:
             return
+
+    if amount_total == settings.PRICE_MONTH_UNLIMITED_CENTS:
+        pass_type, days = "month_unlimited", settings.MONTH_PASS_VALIDITY_DAYS
+    elif amount_total == settings.PRICE_MONTH_TWO_PER_WEEK_CENTS:
+        pass_type, days = "month_two_per_week", settings.MONTH_PASS_VALIDITY_DAYS
+    else:
+        pass_type, days = "drop_in", settings.DROP_IN_PASS_VALIDITY_DAYS
+
     member = db.query(Member).filter(Member.email == email).first()
-    expires = datetime.now(timezone.utc) + timedelta(
-        days=settings.DROP_IN_PASS_VALIDITY_DAYS
-    )
+    expires = datetime.now(timezone.utc) + timedelta(days=days)
     db.add(
         AccessPass(
             email=email,
             member_id=member.id if member else None,
             expires_at=expires,
+            pass_type=pass_type,
             stripe_payment_id=str(payment_id) if payment_id else None,
         )
     )
     db.commit()
+    print(f"[WEBHOOK] pass {pass_type} créé pour {email} (expire {expires:%d/%m})")
 
 
 def _member_for_subscription(stripe_sub, sub, db: Session):
