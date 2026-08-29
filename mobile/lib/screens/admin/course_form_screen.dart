@@ -46,18 +46,16 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
   Future<void> _loadInitialData() async {
     try {
       final api = context.read<AuthProvider>().api;
-      final members = await api.getMembers();
+      // Endpoint dédié, sans pagination — getMembers() est limité aux 100
+      // derniers inscrits et faisait disparaître les coachs anciens.
+      final coaches = await api.getCoaches();
       Course? course;
       if (widget.courseId != null) {
         course = await api.getCourse(widget.courseId!);
       }
 
       setState(() {
-        // Assignables comme coach d'un cours : rôle coach + admins.
-        // (Le carrousel public « Coachs », lui, reste limité au rôle coach.)
-        _coaches = members
-            .where((m) => m.role == 'coach' || m.role == 'admin')
-            .toList();
+        _coaches = coaches;
         if (course != null) {
           final localStart = course.startTime.toLocal();
           final localEnd = course.endTime.toLocal();  
