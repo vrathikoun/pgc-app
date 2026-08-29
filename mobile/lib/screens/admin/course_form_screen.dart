@@ -53,7 +53,11 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
       }
 
       setState(() {
-        _coaches = members.where((m) => m.role == 'coach').toList();
+        // Assignables comme coach d'un cours : rôle coach + admins.
+        // (Le carrousel public « Coachs », lui, reste limité au rôle coach.)
+        _coaches = members
+            .where((m) => m.role == 'coach' || m.role == 'admin')
+            .toList();
         if (course != null) {
           final localStart = course.startTime.toLocal();
           final localEnd = course.endTime.toLocal();  
