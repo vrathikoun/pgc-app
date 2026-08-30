@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     PUBLIC_API_URL: str = "https://pgc-app.onrender.com"
     # Fiche App Store (lien de téléchargement iOS dans les emails).
     APP_STORE_URL: str = "https://apps.apple.com/fr/app/id6795164799"
+    # Fiche Play Store (lien de téléchargement Android dans les emails).
+    PLAY_STORE_URL: str = "https://play.google.com/store/apps/details?id=com.pgcapp.pgc_app"
 
     class Config:
         env_file = ".env"

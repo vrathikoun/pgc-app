@@ -104,9 +104,12 @@ def send_signup_after_payment(email: str) -> None:
           <a href="{settings.APP_STORE_URL}">Télécharger sur l'App Store</a>
         </p>
         <p style="margin:18px 0">
-          <b>🤖 Android / ordinateur :</b>
+          <b>🤖 Android :</b>
+          <a href="{settings.PLAY_STORE_URL}">Télécharger sur Google Play</a>
+        </p>
+        <p style="margin:18px 0">
+          <b>💻 Ordinateur :</b>
           <a href="{settings.SIGNUP_URL}">Ouvrir l'application web</a>
-          (fonctionne sur tous les appareils, tu peux l'ajouter à ton écran d'accueil)
         </p>
         <p>À très vite sur les tatamis 💪</p>
         """,
