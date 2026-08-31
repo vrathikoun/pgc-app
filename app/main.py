@@ -1,7 +1,7 @@
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
@@ -73,6 +73,13 @@ def support_page():
 @app.get("/logo.png", include_in_schema=False)
 def logo():
     return FileResponse(Path(__file__).parent / "static" / "logo.png")
+
+
+# URL stable pour le site web : redirige vers le lien de paiement Open Mat
+# courant (variable OPEN_MAT_URL dans Render — à changer quand le lien tourne).
+@app.get("/openmat", include_in_schema=False)
+def open_mat_redirect():
+    return RedirectResponse(settings.OPEN_MAT_URL, status_code=302)
 
 
 app.include_router(auth.router)

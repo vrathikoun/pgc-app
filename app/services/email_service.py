@@ -116,6 +116,30 @@ def send_signup_after_payment(email: str) -> None:
     )
 
 
+def send_open_mat_pass(email: str, qr_url: str, valid_until: str) -> None:
+    """Pass invité open mat : QR d'entrée envoyé par email (aucun compte requis)."""
+    from app.core.config import settings
+
+    _send(
+        to=email,
+        subject="Ton pass Open Mat PGC 🥋",
+        html=f"""
+        <h2>Paiement confirmé — voici ton pass</h2>
+        <p>Présente ce QR code à l'accueil le jour de l'open mat :</p>
+        <p style="text-align:center;margin:20px 0">
+          <img src="{qr_url}" alt="QR pass open mat" width="220" height="220"
+               style="background:#ffffff;padding:12px;border-radius:12px" />
+        </p>
+        <p><b>1 entrée</b>, valable jusqu'au <b>{valid_until}</b>.</p>
+        <p style="font-size:13px;opacity:.85">Envie de venir plus souvent ?
+        <a href="{settings.APP_STORE_URL}">iPhone</a> ·
+        <a href="{settings.PLAY_STORE_URL}">Android</a> ·
+        <a href="{settings.SIGNUP_URL}">application web</a></p>
+        <p>À dimanche sur les tatamis 💪</p>
+        """,
+    )
+
+
 def send_booking_confirmation(first_name: str, email: str, course_name: str, start_time: str) -> None:
     """Email de confirmation de réservation."""
     _send(

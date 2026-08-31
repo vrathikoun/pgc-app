@@ -312,13 +312,17 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
             "customer_email"
         )
         if email and session.get("mode") == "payment":
-            _create_pass_for_payment(
+            created = _create_pass_for_payment(
                 email,
                 session.get("payment_intent") or session.get("id"),
                 session.get("amount_total"),
                 db,
             )
-            _safe_send_signup(email)
+            if created is not None and created.pass_type == "drop_in":
+                # Open mat / cours à l'unité : QR d'entrée par email, sans compte.
+                _safe_send_open_mat_pass(created)
+            elif created is not None:
+                _safe_send_signup(email)
 
     return {"received": True, "type": event_type}
 
@@ -373,7 +377,7 @@ def _create_pass_for_payment(email: str, payment_id, amount_total, db: Session) 
             .first()
         )
         if exists:
-            return
+            return None
 
     if amount_total == settings.PRICE_MONTH_UNLIMITED_CENTS:
         pass_type, days = "month_unlimited", settings.MONTH_PASS_VALIDITY_DAYS
@@ -384,17 +388,37 @@ def _create_pass_for_payment(email: str, payment_id, amount_total, db: Session) 
 
     member = db.query(Member).filter(Member.email == email).first()
     expires = datetime.now(timezone.utc) + timedelta(days=days)
-    db.add(
-        AccessPass(
-            email=email,
-            member_id=member.id if member else None,
-            expires_at=expires,
-            pass_type=pass_type,
-            stripe_payment_id=str(payment_id) if payment_id else None,
-        )
+    access_pass = AccessPass(
+        email=email,
+        member_id=member.id if member else None,
+        expires_at=expires,
+        pass_type=pass_type,
+        stripe_payment_id=str(payment_id) if payment_id else None,
     )
+    db.add(access_pass)
     db.commit()
+    db.refresh(access_pass)
     print(f"[WEBHOOK] pass {pass_type} créé pour {email} (expire {expires:%d/%m})")
+    return access_pass
+
+
+def _safe_send_open_mat_pass(access_pass) -> None:
+    """Email du QR invité — un échec SMTP ne doit pas casser le webhook."""
+    try:
+        from app.core.security import create_access_token
+
+        remaining = access_pass.expires_at - datetime.now(timezone.utc)
+        token = create_access_token(
+            {"scope": "guest_pass", "pass": access_pass.id},
+            expires_delta=remaining,
+        )
+        qr_url = f"{settings.PUBLIC_API_URL.rstrip('/')}/access/guest-qr/{token}"
+        email_service.send_open_mat_pass(
+            access_pass.email, qr_url, f"{access_pass.expires_at:%d/%m/%Y}"
+        )
+        print(f"[WEBHOOK] pass open mat envoyé à {access_pass.email}")
+    except Exception as exc:
+        print(f"[WEBHOOK] pass open mat NON envoyé : {type(exc).__name__}: {exc}")
 
 
 def _member_for_subscription(stripe_sub, sub, db: Session):
