@@ -75,11 +75,14 @@ def logo():
     return FileResponse(Path(__file__).parent / "static" / "logo.png")
 
 
-# URL stable pour le site web : redirige vers le lien de paiement Open Mat
-# courant (variable OPEN_MAT_URL dans Render — à changer quand le lien tourne).
+# URL stable pour le site web : le lien de paiement Open Mat de la semaine est
+# créé automatiquement (12 places) ; OPEN_MAT_URL ne sert que de secours.
 @app.get("/openmat", include_in_schema=False)
 def open_mat_redirect():
-    return RedirectResponse(settings.OPEN_MAT_URL, status_code=302)
+    from app.services.stripe_service import get_or_create_openmat_link
+
+    url = get_or_create_openmat_link() or settings.OPEN_MAT_URL
+    return RedirectResponse(url, status_code=302)
 
 
 app.include_router(auth.router)

@@ -37,8 +37,10 @@ class Settings(BaseSettings):
     PRICE_MONTH_UNLIMITED_CENTS: int = 15000     # 150 € illimité 1 mois
     PRICE_MONTH_TWO_PER_WEEK_CENTS: int = 10000  # 100 € 2 cours/sem 1 mois
     MONTH_PASS_VALIDITY_DAYS: int = 30
-    # Lien de paiement Open Mat courant (redirection /openmat, site web).
-    # À mettre à jour dans les env Render quand le lien hebdo change.
+    # Open mat : jauge extérieurs par semaine, et lien de secours si l'API
+    # Stripe est injoignable au moment de la redirection /openmat.
+    OPEN_MAT_CAPACITY: int = 12
+    OPEN_MAT_PRICE_CENTS: int = 500
     OPEN_MAT_URL: str = "https://buy.stripe.com/6oUcN4cB9ch6cDW9YI0Jq06"
     # Lien envoyé par email après paiement pour créer son compte (app web).
     SIGNUP_URL: str = "https://app.polograpplingclub.com"

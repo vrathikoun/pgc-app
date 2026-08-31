@@ -402,6 +402,69 @@ def _create_pass_for_payment(email: str, payment_id, amount_total, db: Session) 
     return access_pass
 
 
+# ── Lien Open Mat hebdomadaire (créé automatiquement, jauge limitée) ─────────
+# Cache par process : une seule instance Render, suffisant.
+_openmat_cache = {"week": None, "url": None}
+
+
+def get_or_create_openmat_link() -> str | None:
+    """Retourne le lien de paiement Open Mat de la semaine (créé au besoin).
+
+    Un lien par semaine ISO (lundi→dimanche, Paris), limité à
+    OPEN_MAT_CAPACITY ventes ; les liens des semaines passées sont désactivés.
+    Retourne None si Stripe est injoignable (l'appelant a un lien de secours).
+    """
+    from app.core.timezone import now_paris
+
+    today = now_paris().date()
+    iso = today.isocalendar()
+    week = f"{iso[0]}-W{iso[1]:02d}"
+    if _openmat_cache["week"] == week:
+        return _openmat_cache["url"]
+
+    try:
+        url = None
+        for pl in stripe.PaymentLink.list(active=True, limit=30).auto_paging_iter():
+            tag = (_sub_field(pl, "metadata") or {}).get("openmat_week")
+            if tag == week:
+                url = pl["url"]
+            elif tag:  # lien open mat d'une semaine passée → on l'éteint
+                stripe.PaymentLink.modify(pl["id"], active=False)
+
+        if url is None:
+            prods = stripe.Product.search(
+                query="name:'Open Mat (extérieur)' AND active:'true'"
+            )
+            if prods["data"]:
+                product_id = prods["data"][0]["id"]
+            else:
+                product_id = stripe.Product.create(name="Open Mat (extérieur)")["id"]
+            prices = stripe.Price.list(product=product_id, active=True, limit=1)
+            if prices["data"]:
+                price_id = prices["data"][0]["id"]
+            else:
+                price_id = stripe.Price.create(
+                    product=product_id,
+                    unit_amount=settings.OPEN_MAT_PRICE_CENTS,
+                    currency="eur",
+                )["id"]
+            pl = stripe.PaymentLink.create(
+                line_items=[{"price": price_id, "quantity": 1}],
+                restrictions={
+                    "completed_sessions": {"limit": settings.OPEN_MAT_CAPACITY}
+                },
+                metadata={"openmat_week": week},
+            )
+            url = pl["url"]
+            print(f"[OPENMAT] lien {week} créé ({settings.OPEN_MAT_CAPACITY} places)")
+
+        _openmat_cache.update(week=week, url=url)
+        return url
+    except Exception as exc:
+        print(f"[OPENMAT] création du lien impossible : {type(exc).__name__}: {exc}")
+        return None
+
+
 def _safe_send_open_mat_pass(access_pass) -> None:
     """Email du QR invité — un échec SMTP ne doit pas casser le webhook."""
     try:
