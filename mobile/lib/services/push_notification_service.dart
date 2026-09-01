@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import 'package:pgc_app/firebase_options.dart';
 import 'package:pgc_app/services/api_service.dart';
 
 /// Handler des messages reçus quand l'app est en arrière-plan ou tuée.
@@ -27,7 +28,9 @@ class PushNotificationService {
   /// À appeler une seule fois au démarrage, avant runApp().
   static Future<void> initApp() async {
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
       FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
     } catch (e) {
       debugPrint('[PUSH] Firebase non initialisé (config manquante ?) : $e');

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "218869625375",
+    "project_id": "pgc-app-c4f8a",
+    "storage_bucket": "pgc-app-c4f8a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:218869625375:android:564b9a4f09363a1a2c9b2a",
+        "android_client_info": {
+          "package_name": "com.pgcapp.pgc_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD40jKDPj7gghKBmJBIfT2k7ncjxz2iFEs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
