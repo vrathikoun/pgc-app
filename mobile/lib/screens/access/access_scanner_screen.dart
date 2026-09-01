@@ -71,7 +71,7 @@ class _AccessScannerScreenState extends State<AccessScannerScreen> {
               showGallery: false,
               showToggleCamera: false,
               showScannerOverlay: true,
-              scannerOverlay: const FixedScannerOverlay(
+              scannerOverlay: const ScannerOverlayBorder(
                   borderColor: AppColors.gold, cutOutSize: 260),
               loading: const DecoratedBox(
                 decoration: BoxDecoration(color: AppColors.bg),

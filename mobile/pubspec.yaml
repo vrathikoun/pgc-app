@@ -33,7 +33,7 @@ dependencies:
   # flutter_zxing décode via ZXing (C++), sans pods Google → pas de conflit
   # GoogleDataTransport avec Firebase (contrairement à mobile_scanner/MLKit).
   qr_flutter: ^4.1.0
-  flutter_zxing: ^1.9.0
+  flutter_zxing: ^2.4.0
 
 dev_dependencies:
   flutter_test:
