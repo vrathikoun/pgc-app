@@ -88,12 +88,14 @@ class CourseParticipant {
   final String lastName;
   final String? avatarUrl;
   final String status; // confirmed | waitlist
+  final bool checkedIn; // présence pointée au scan QR
 
   CourseParticipant.fromJson(Map<String, dynamic> json)
       : firstName = json['first_name'] ?? '',
         lastName = json['last_name'] ?? '',
         avatarUrl = json['avatar_url'],
-        status = json['status'] ?? 'confirmed';
+        status = json['status'] ?? 'confirmed',
+        checkedIn = json['checked_in'] == true;
 
   bool get isWaitlist => status == 'waitlist';
   String get fullName => '$firstName $lastName'.trim();

@@ -36,6 +36,13 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             PgcAdminCard(
+              icon: Icons.history,
+              title: 'Historique des cours',
+              subtitle: 'Cours passés : inscrits et présents (pointage au scan).',
+              onTap: () => context.push('/admin/history'),
+            ),
+            const SizedBox(height: 14),
+            PgcAdminCard(
               icon: Icons.people_alt_outlined,
               title: 'Membres & rôles',
               subtitle: 'Passe un membre en coach ou admin.',

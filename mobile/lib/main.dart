@@ -21,6 +21,7 @@ import 'package:pgc_app/screens/access/access_card_screen.dart';
 import 'package:pgc_app/screens/access/access_scanner_screen.dart';
 import 'package:pgc_app/screens/admin/admin_dashboard_screen.dart';
 import 'package:pgc_app/screens/admin/course_form_screen.dart';
+import 'package:pgc_app/screens/admin/course_history_screen.dart';
 import 'package:pgc_app/screens/admin/member_admin_screen.dart';
 import 'package:pgc_app/screens/admin/member_profile_admin_screen.dart';
 import 'package:pgc_app/screens/admin/academy_admin_screen.dart';
@@ -172,6 +173,11 @@ class PgcApp extends StatelessWidget {
             GoRoute(
               path: '/admin/schedule',
               builder: (_, __) => const ScheduleAdminScreen(),
+            ),
+
+            GoRoute(
+              path: '/admin/history',
+              builder: (_, __) => const CourseHistoryScreen(),
             ),
 
             GoRoute(

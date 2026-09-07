@@ -232,6 +232,17 @@ def verify_access(
         .order_by(Course.start_time)
         .all()
     )
+    # Présence : le scan validé pointe les réservations confirmées du jour.
+    if allowed:
+        stamped = False
+        now_utc = datetime.now(timezone.utc)
+        for b in today_rows:
+            if b.status == BookingStatus.confirmed and b.checked_in_at is None:
+                b.checked_in_at = now_utc
+                stamped = True
+        if stamped:
+            db.commit()
+
     today_bookings = [
         TodayBookingOut(
             course_name=b.course.name if b.course else "Cours",

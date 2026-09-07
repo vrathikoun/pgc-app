@@ -14,6 +14,7 @@ class ParticipantOut(BaseModel):
     last_name: str
     avatar_url: Optional[str] = None
     status: BookingStatus
+    checked_in: bool = False
 
 
 class BookingCreate(BaseModel):

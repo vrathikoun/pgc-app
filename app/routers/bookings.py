@@ -283,6 +283,7 @@ def course_bookings(
             last_name=m.last_name,
             avatar_url=m.avatar_url,
             status=b.status,
+            checked_in=b.checked_in_at is not None,
         )
         for b, m in rows
     ]

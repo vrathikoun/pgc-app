@@ -25,6 +25,8 @@ class Booking(Base):
     notes = Column(String, nullable=True)
 
     booked_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Présence effective : horodaté au scan du QR à l'accueil le jour du cours.
+    checked_in_at = Column(DateTime(timezone=True), nullable=True)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relations

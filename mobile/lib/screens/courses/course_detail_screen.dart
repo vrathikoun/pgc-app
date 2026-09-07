@@ -409,7 +409,21 @@ class _ParticipantsCard extends StatelessWidget {
                     child: Text(p.fullName,
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
-                  if (p.isWaitlist)
+                  if (p.checkedIn)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.green.withOpacity(.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text('✓ Présent',
+                          style: TextStyle(
+                              color: AppColors.green,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700)),
+                    )
+                  else if (p.isWaitlist)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),

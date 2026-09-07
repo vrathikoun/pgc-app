@@ -26,6 +26,7 @@ _LIGHTWEIGHT_MIGRATIONS = [
     "ALTER TABLE access_passes ALTER COLUMN email TYPE citext",
     # Pass mensuels (paiement unique 1 mois) en plus des pass à l'unité.
     "ALTER TABLE access_passes ADD COLUMN IF NOT EXISTS pass_type VARCHAR NOT NULL DEFAULT 'drop_in'",
+    "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ",
 ]
 
 
