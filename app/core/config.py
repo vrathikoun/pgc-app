@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     # Contrôle d'accès
     # Durée de validité d'un pass « cours à l'unité » (jours).
     DROP_IN_PASS_VALIDITY_DAYS: int = 7
+    # Au-dessus de ce montant, un paiement n'est jamais un cours à l'unité.
+    PASS_DROP_IN_MAX_CENTS: int = 5000  # 50 €
     # Montants Stripe (centimes) → mapping abonnement. Adapter si tes tarifs changent.
     PRICE_UNLIMITED_CENTS: int = 9000    # 90 € illimité
     PRICE_TWO_PER_WEEK_CENTS: int = 6500  # 65 € 2 cours/semaine
@@ -37,6 +39,10 @@ class Settings(BaseSettings):
     PRICE_MONTH_UNLIMITED_CENTS: int = 15000     # 150 € illimité 1 mois
     PRICE_MONTH_TWO_PER_WEEK_CENTS: int = 10000  # 100 € 2 cours/sem 1 mois
     MONTH_PASS_VALIDITY_DAYS: int = 30
+    # Formules annuelles payées d'avance (engagement 1 an).
+    PRICE_YEAR_UNLIMITED_CENTS: int = 108000     # 1080 € illimité 1 an
+    PRICE_YEAR_TWO_PER_WEEK_CENTS: int = 78000   # 780 € 2 cours/sem 1 an
+    YEAR_PASS_VALIDITY_DAYS: int = 365
     # Open mat : jauge extérieurs par semaine, et lien de secours si l'API
     # Stripe est injoignable au moment de la redirection /openmat.
     OPEN_MAT_CAPACITY: int = 12

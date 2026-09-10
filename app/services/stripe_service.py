@@ -363,12 +363,41 @@ def _plan_for_amount(amount):
     return None, None
 
 
-def _create_pass_for_payment(email: str, payment_id, amount_total, db: Session) -> None:
+def _pass_for_amount(amount):
+    """(type de pass, jours de validité) pour un montant payé, (None, None) si
+    le tarif n'est pas au catalogue. Sous PASS_DROP_IN_MAX_CENTS on considère
+    qu'il s'agit d'un open mat / cours à l'unité."""
+    catalogue = {
+        settings.PRICE_YEAR_UNLIMITED_CENTS: (
+            "year_unlimited",
+            settings.YEAR_PASS_VALIDITY_DAYS,
+        ),
+        settings.PRICE_YEAR_TWO_PER_WEEK_CENTS: (
+            "year_two_per_week",
+            settings.YEAR_PASS_VALIDITY_DAYS,
+        ),
+        settings.PRICE_MONTH_UNLIMITED_CENTS: (
+            "month_unlimited",
+            settings.MONTH_PASS_VALIDITY_DAYS,
+        ),
+        settings.PRICE_MONTH_TWO_PER_WEEK_CENTS: (
+            "month_two_per_week",
+            settings.MONTH_PASS_VALIDITY_DAYS,
+        ),
+    }
+    if amount in catalogue:
+        return catalogue[amount]
+    if (amount or 0) <= settings.PASS_DROP_IN_MAX_CENTS:
+        return "drop_in", settings.DROP_IN_PASS_VALIDITY_DAYS
+    return None, None
+
+
+def _create_pass_for_payment(email: str, payment_id, amount_total, db: Session):
     """Crée le pass correspondant à un paiement unique (idempotent).
 
-    150 € → pass mensuel illimité ; 100 € → pass mensuel 2 cours/semaine
-    (30 jours glissants, multi-entrées) ; tout autre montant → pass à l'unité
-    (7 jours, consommé au 1er scan).
+    Le catalogue mappe chaque tarif (1080/780 € à l'année, 150/100 € au mois)
+    vers un pass multi-entrées. Les petits montants (open mat, cours à l'unité)
+    donnent un pass 7 jours consommé au 1er scan.
     """
     if payment_id:
         exists = (
@@ -379,12 +408,15 @@ def _create_pass_for_payment(email: str, payment_id, amount_total, db: Session) 
         if exists:
             return None
 
-    if amount_total == settings.PRICE_MONTH_UNLIMITED_CENTS:
+    pass_type, days = _pass_for_amount(amount_total)
+    if pass_type is None:
+        # Tarif inconnu : ne JAMAIS dégrader un gros paiement en pass 7 jours
+        # (un nouveau lien Stripe créé côté club ne doit pas léser l'adhérent).
         pass_type, days = "month_unlimited", settings.MONTH_PASS_VALIDITY_DAYS
-    elif amount_total == settings.PRICE_MONTH_TWO_PER_WEEK_CENTS:
-        pass_type, days = "month_two_per_week", settings.MONTH_PASS_VALIDITY_DAYS
-    else:
-        pass_type, days = "drop_in", settings.DROP_IN_PASS_VALIDITY_DAYS
+        print(
+            f"[WEBHOOK] ⚠️ tarif inconnu {(amount_total or 0) / 100:.2f} € pour "
+            f"{email} → pass mensuel illimité par sécurité (à cartographier)"
+        )
 
     member = db.query(Member).filter(Member.email == email).first()
     expires = datetime.now(timezone.utc) + timedelta(days=days)

@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.security import create_access_token, decode_access_token
 from app.core.timezone import PARIS, fmt_paris, now_paris
 from app.database import get_db
-from app.models.access_pass import AccessPass
+from app.models.access_pass import MULTI_ENTRY_PASSES, AccessPass
 from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
 from app.models.member import Member, MemberRole
@@ -86,22 +86,20 @@ def _check_and_consume_pass(member: Member, db: Session) -> tuple[bool, str]:
     """
     now = datetime.now(timezone.utc)
 
-    # Pass mensuel (multi-entrées, jamais consommé) : prioritaire.
-    month = (
+    # Pass multi-entrées (mensuel ou annuel, jamais consommé) : prioritaire.
+    multi = (
         db.query(AccessPass)
         .filter(
             AccessPass.email == member.email,
-            AccessPass.pass_type.in_(("month_unlimited", "month_two_per_week")),
+            AccessPass.pass_type.in_(tuple(MULTI_ENTRY_PASSES)),
             AccessPass.expires_at > now,
         )
         .order_by(AccessPass.expires_at.desc())
         .first()
     )
-    if month:
-        label = (
-            "illimité" if month.pass_type == "month_unlimited" else "2 cours/sem"
-        )
-        return True, f"Pass mensuel {label} — valable jusqu'au {month.expires_at:%d/%m}"
+    if multi:
+        label = MULTI_ENTRY_PASSES[multi.pass_type]
+        return True, f"Pass {label} — valable jusqu'au {multi.expires_at:%d/%m/%Y}"
 
     pass_valide = (
         db.query(AccessPass)

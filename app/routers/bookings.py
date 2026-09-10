@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.timezone import as_utc, fmt_paris, now_utc, paris_week_start
 from app.database import get_db
-from app.models.access_pass import AccessPass
+from app.models.access_pass import TWO_PER_WEEK_PASSES, AccessPass
 from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
 from app.models.member import Member, MemberRole
@@ -158,7 +158,7 @@ def create_booking(
                     status_code=403,
                     detail=f"Réservation impossible : {reason}",
                 )
-            if gate_pass.pass_type == "month_two_per_week":
+            if gate_pass.pass_type in TWO_PER_WEEK_PASSES:
                 month_pass_limit = 2
 
     weekly_limit = getattr(current, "weekly_booking_limit", None)
