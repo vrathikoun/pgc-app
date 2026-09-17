@@ -20,6 +20,9 @@ def test_pass_for_amount():
     assert _pass_for_amount(500) == ("drop_in", 7)
     # Tarif inconnu au-dessus du seuil : surtout pas un pass 7 jours.
     assert _pass_for_amount(90000) == (None, None)
+    # Un montant remisé n'est pas au catalogue (780 € - 15 % = 663 €) : c'est
+    # pourquoi le webhook transmet amount_subtotal, le montant AVANT réduction.
+    assert _pass_for_amount(66300) == (None, None)
 
 
 if __name__ == "__main__":

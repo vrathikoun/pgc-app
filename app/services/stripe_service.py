@@ -315,7 +315,9 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
             created = _create_pass_for_payment(
                 email,
                 session.get("payment_intent") or session.get("id"),
-                session.get("amount_total"),
+                # Montant AVANT réduction : un coupon (-15 % étudiant/compétiteur)
+                # ne doit pas empêcher de reconnaître le tarif acheté.
+                session.get("amount_subtotal") or session.get("amount_total"),
                 db,
             )
             if created is not None and created.pass_type == "drop_in":
