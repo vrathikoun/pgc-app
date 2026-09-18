@@ -20,6 +20,8 @@ class CourseListScreen extends StatefulWidget {
 class _CourseListScreenState extends State<CourseListScreen> {
   List<Course> _courses = [];
   List<Member> _coaches = [];
+  /// Cours où le membre a une place confirmée — affichés en doré.
+  Set<int> _bookedCourseIds = {};
   bool _loading = true;
   String? _error;
   int _selectedDayIndex = 0;
@@ -59,6 +61,17 @@ class _CourseListScreenState extends State<CourseListScreen> {
       );
       final coaches = await api.getCoaches();
 
+      Set<int> booked = {};
+      try {
+        final bookings = await api.getMyBookings();
+        booked = bookings
+            .where((b) => b.isConfirmed)
+            .map((b) => b.courseId)
+            .toSet();
+      } catch (_) {
+        // Simple mise en valeur : on affiche le planning même sans cette info.
+      }
+
       // Carrousel : pas de compte technique « Admin », et les coachs les plus
       // présents d'abord (ordre voulu par le club).
       const coachOrder = ['nicolas', 'viphone', 'mathieu', 'faris'];
@@ -72,6 +85,7 @@ class _CourseListScreenState extends State<CourseListScreen> {
       setState(() {
         _courses = courses;
         _coaches = coaches;
+        _bookedCourseIds = booked;
         _loading = false;
       });
     } catch (e) {
@@ -141,7 +155,12 @@ class _CourseListScreenState extends State<CourseListScreen> {
               else if (selectedCourses.isEmpty)
                 const _EmptyState()
               else
-                ...selectedCourses.map((course) => _CourseCard(course: course)),
+                ...selectedCourses.map(
+                  (course) => _CourseCard(
+                    course: course,
+                    booked: _bookedCourseIds.contains(course.id),
+                  ),
+                ),
             ],
           ),
         ),
@@ -283,11 +302,18 @@ class _DaySelector extends StatelessWidget {
 
 class _CourseCard extends StatelessWidget {
   final Course course;
-  const _CourseCard({required this.course});
+
+  /// Le membre a une place confirmée : la carte passe en doré.
+  final bool booked;
+
+  const _CourseCard({required this.course, this.booked = false});
 
   @override
   Widget build(BuildContext context) {
     final time = DateFormat('HH:mm').format(course.startTime);
+    // Sur le doré, le texte clair ne passe pas : on bascule sur du sombre.
+    final fg = booked ? Colors.black : AppColors.text;
+    final fgSoft = booked ? Colors.black54 : Colors.white70;
 
     return GestureDetector(
       onTap: () => context.push('/courses/${course.id}'),
@@ -296,17 +322,39 @@ class _CourseCard extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(colors: [Color(0xFF0B5D3B), Color(0xFF042D1F)]),
+          gradient: LinearGradient(
+            colors: booked
+                ? const [AppColors.gold, Color(0xFFA9853F)]
+                : const [Color(0xFF0B5D3B), Color(0xFF042D1F)],
+          ),
         ),
         child: Row(
           children: [
-            Text(time, style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800)),
+            Text(time, style: TextStyle(color: fg, fontWeight: FontWeight.w800)),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(course.name, style: const TextStyle(color: AppColors.text, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          course.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: fg, fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      // La couleur seule ne doit pas porter l'information.
+                      if (booked) ...[
+                        const SizedBox(width: 8),
+                        const Icon(Icons.check_circle, size: 16, color: Colors.black87),
+                        const SizedBox(width: 4),
+                        const Text('Réservé',
+                            style: TextStyle(color: Colors.black87, fontSize: 11, fontWeight: FontWeight.w800)),
+                      ],
+                    ],
+                  ),
                   if (course.coachId != null) ...[
                     const SizedBox(height: 8),
                     Row(
@@ -314,7 +362,7 @@ class _CourseCard extends StatelessWidget {
                         PgcAvatar(avatarUrl: course.coachAvatarUrl, initials: course.coachInitials, radius: 12),
                         const SizedBox(width: 8),
                         Flexible(
-                          child: Text(course.coachFullName, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w700)),
+                          child: Text(course.coachFullName, overflow: TextOverflow.ellipsis, style: TextStyle(color: fgSoft, fontSize: 12, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
@@ -322,7 +370,7 @@ class _CourseCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.text),
+            Icon(Icons.chevron_right, color: fg),
           ],
         ),
       ),
