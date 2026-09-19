@@ -116,6 +116,29 @@ def send_signup_after_payment(email: str) -> None:
     )
 
 
+def send_waitlist_pressure(
+    first_name: str, email: str, course_name: str, start_time: str,
+    waitlist_count: int, hours_left: int,
+) -> None:
+    """Cours complet avec longue liste d'attente : invite à libérer sa place."""
+    pluriel = "personnes attendent" if waitlist_count > 1 else "personne attend"
+    _send(
+        to=email,
+        subject=f"Ton cours dans {hours_left}h — {waitlist_count} en liste d'attente",
+        html=f"""
+        <h2>Ton cours commence dans {hours_left}h ⏳</h2>
+        <p>Salut {first_name}, tu es inscrit à <b>{course_name}</b> ({start_time}).</p>
+        <p>Le cours est <b>complet</b> et <b>{waitlist_count} {pluriel}</b> une place.
+        Si tu ne peux finalement pas venir, annule ta réservation dans
+        l'application : la première personne de la liste sera prévenue
+        immédiatement et pourra prendre ta place.</p>
+        <p style="opacity:.85">App &rarr; <i>Mes réservations</i> &rarr; le cours
+        &rarr; <i>Me désinscrire</i>. 10 secondes.</p>
+        <p>Si tu viens, parfait : à tout à l'heure 💪</p>
+        """,
+    )
+
+
 def send_open_mat_pass(email: str, qr_url: str, valid_until: str) -> None:
     """Pass invité open mat : QR d'entrée envoyé par email (aucun compte requis)."""
     from app.core.config import settings

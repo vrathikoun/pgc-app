@@ -14,6 +14,8 @@ Base = declarative_base()
 # On ajoute donc ici les nouvelles colonnes à la main (syntaxe PostgreSQL).
 _LIGHTWEIGHT_MIGRATIONS = [
     "ALTER TABLE courses ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ",
+    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS waitlist_alert_8h_sent_at TIMESTAMPTZ",
+    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS waitlist_alert_4h_sent_at TIMESTAMPTZ",
     "ALTER TABLE members ADD COLUMN IF NOT EXISTS emergency_contact VARCHAR",
     # Le plan n'a plus de valeur par défaut : il vient de Stripe.
     "ALTER TABLE members ALTER COLUMN subscription_plan DROP NOT NULL",

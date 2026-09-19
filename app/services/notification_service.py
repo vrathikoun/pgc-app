@@ -143,6 +143,35 @@ def notify_waitlist_promoted(db: Session, member: Member, course: Course) -> Non
     )
 
 
+def notify_waitlist_pressure(
+    db: Session, members: Sequence[Member], course: Course,
+    waitlist_count: int, hours_left: int,
+) -> None:
+    """Alerte H-8 / H-4 : cours plein, liste d'attente longue, pensez à annuler."""
+    if not members:
+        return
+
+    when = _fmt(course.start_time)
+    _push_to_members(
+        db,
+        members,
+        title=f"{course.name} dans {hours_left}h — {waitlist_count} en attente",
+        body=(
+            "Le cours est complet. Si tu ne peux pas venir, annule ta place : "
+            "quelqu'un de la liste d'attente la prendra."
+        ),
+        data={
+            "type": "waitlist_pressure",
+            "course_id": course.id,
+            "hours_left": hours_left,
+        },
+    )
+    for m in members:
+        email_service.send_waitlist_pressure(
+            m.first_name, m.email, course.name, when, waitlist_count, hours_left
+        )
+
+
 def send_course_reminder(db: Session, members: Sequence[Member], course: Course) -> None:
     """Rappel 24h avant le cours, avec invitation à annuler en cas d'empêchement."""
     if not members:

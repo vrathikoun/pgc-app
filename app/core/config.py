@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # Le cron externe doit envoyer ce secret dans l'en-tête X-Cron-Secret.
     CRON_SECRET: str = ""
 
+    # Alerte « cours plein » : envoyée à H-8 et H-4 aux inscrits d'un cours
+    # complet dont la liste d'attente dépasse ce nombre de personnes.
+    WAITLIST_ALERT_THRESHOLD: int = 5
+
     # Contrôle d'accès
     # Durée de validité d'un pass « cours à l'unité » (jours).
     DROP_IN_PASS_VALIDITY_DAYS: int = 7

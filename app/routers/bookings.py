@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.core.timezone import as_utc, fmt_paris, now_utc, paris_week_start
+from app.core.timezone import as_utc, now_utc, paris_week_start
 from app.database import get_db
 from app.models.access_pass import TWO_PER_WEEK_PASSES, AccessPass
 from app.models.booking import Booking, BookingStatus
@@ -15,7 +15,7 @@ from app.routers.members import get_current_member, require_admin
 from app.schemas.booking_schema import BookingCreate, BookingOut, ParticipantOut
 from app.schemas.course_schema import CourseOut
 from app.schemas.member_schema import MemberOut
-from app.services import email_service, notification_service, stripe_service, waitlist_service
+from app.services import notification_service, stripe_service, waitlist_service
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -203,13 +203,8 @@ def create_booking(
     if status == BookingStatus.waitlist:
         position = _waitlist_position(booking, db)
         notification_service.notify_waitlist_joined(db, current, course, position or 1)
-    else:
-        email_service.send_booking_confirmation(
-            first_name=current.first_name,
-            email=current.email,
-            course_name=course.name,
-            start_time=fmt_paris(course.start_time),
-        )
+    # Pas d'email de confirmation : la réservation est visible dans l'app,
+    # et le club préfère réserver les emails aux informations utiles.
     return _enrich_booking(booking, db)
 
 
@@ -234,12 +229,6 @@ def cancel_booking(
     booking.status = BookingStatus.cancelled
     booking.cancelled_at = _now_utc()
     db.commit()
-
-    email_service.send_booking_cancellation(
-        first_name=current.first_name,
-        email=current.email,
-        course_name=booking.course.name,
-    )
 
     # Une place s'est libérée → promeut le(s) premier(s) de la liste d'attente.
     if booking.course:

@@ -4,6 +4,10 @@ Tâches planifiées — déclenchées par un cron externe (pas par un utilisateu
 Rappel 24h : prévient les membres inscrits (confirmés) qu'ils ont cours le
 lendemain, en les invitant à annuler s'ils ne peuvent pas venir.
 
+Alerte liste d'attente (H-8 et H-4) : sur un cours complet dont la liste
+d'attente dépasse WAITLIST_ALERT_THRESHOLD, relance les inscrits pour qu'ils
+libèrent leur place s'ils ne viennent plus.
+
 Sécurité : l'appelant doit fournir l'en-tête `X-Cron-Secret` égal à CRON_SECRET.
 Mettre en place un cron (Render Cron Job, GitHub Actions, cron-job.org…) qui
 appelle TOUTES LES HEURES :
@@ -24,6 +28,69 @@ from app.models.member import Member
 from app.services import notification_service
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
+
+
+def should_alert(confirmed: int, capacity: int, waitlist: int, threshold: int) -> bool:
+    """Alerter seulement si le cours est plein ET la liste d'attente dépasse le
+    seuil : ailleurs, une annulation ne profite à personne."""
+    return confirmed >= capacity and waitlist > threshold
+
+
+def _confirmed_members(course_id: int, db: Session) -> list[Member]:
+    members = (
+        db.query(Member)
+        .join(Booking, Booking.member_id == Member.id)
+        .filter(
+            Booking.course_id == course_id,
+            Booking.status == BookingStatus.confirmed,
+        )
+        .all()
+    )
+    return list({m.id: m for m in members}.values())
+
+
+def _send_waitlist_alerts(db: Session, now, hours: int, flag) -> tuple[int, int]:
+    """Alerte les inscrits des cours pleins qui démarrent dans ~`hours` heures.
+
+    Ne concerne que les cours complets dont la liste d'attente dépasse le seuil :
+    ailleurs, une annulation ne profite à personne et le message serait du bruit.
+    Retourne (cours traités, membres prévenus).
+    """
+    courses = (
+        db.query(Course)
+        .filter(
+            Course.start_time >= now + timedelta(hours=hours - 1),
+            Course.start_time <= now + timedelta(hours=hours),
+            flag.is_(None),
+        )
+        .all()
+    )
+
+    cours_alertes = membres_alertes = 0
+    for course in courses:
+        confirmes = _confirmed_members(course.id, db)
+        attente = (
+            db.query(Booking)
+            .filter(
+                Booking.course_id == course.id,
+                Booking.status == BookingStatus.waitlist,
+            )
+            .count()
+        )
+        if not should_alert(
+            len(confirmes), course.max_capacity, attente,
+            settings.WAITLIST_ALERT_THRESHOLD,
+        ):
+            continue
+
+        notification_service.notify_waitlist_pressure(
+            db, confirmes, course, attente, hours
+        )
+        setattr(course, flag.key, now)
+        cours_alertes += 1
+        membres_alertes += len(confirmes)
+
+    return cours_alertes, membres_alertes
 
 
 def _require_cron_secret(x_cron_secret: str = Header(default="")) -> None:
@@ -59,16 +126,7 @@ def send_reminders(
     members_notified = 0
 
     for course in courses:
-        members = (
-            db.query(Member)
-            .join(Booking, Booking.member_id == Member.id)
-            .filter(
-                Booking.course_id == course.id,
-                Booking.status == BookingStatus.confirmed,
-            )
-            .all()
-        )
-        members = list({m.id: m for m in members}.values())
+        members = _confirmed_members(course.id, db)
 
         if members:
             notification_service.send_course_reminder(db, members, course)
@@ -77,9 +135,20 @@ def send_reminders(
         course.reminder_sent_at = now
         courses_notified += 1
 
+    # Alertes « cours plein + liste d'attente longue » à H-8 puis H-4.
+    alertes = {}
+    for hours, flag in (
+        (8, Course.waitlist_alert_8h_sent_at),
+        (4, Course.waitlist_alert_4h_sent_at),
+    ):
+        c, m = _send_waitlist_alerts(db, now, hours, flag)
+        alertes[f"h{hours}_courses"] = c
+        alertes[f"h{hours}_members"] = m
+
     db.commit()
 
     return {
         "courses_processed": courses_notified,
         "members_notified": members_notified,
+        **alertes,
     }

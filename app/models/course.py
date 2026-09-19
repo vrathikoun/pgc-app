@@ -47,6 +47,9 @@ class Course(Base):
 
     # Rappel 24h : horodatage de l'envoi du rappel pour ce cours (évite les doublons).
     reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
+    # Alertes « cours plein + longue liste d'attente » : une seule par échéance.
+    waitlist_alert_8h_sent_at = Column(DateTime(timezone=True), nullable=True)
+    waitlist_alert_4h_sent_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relations
     bookings = relationship("Booking", back_populates="course")
