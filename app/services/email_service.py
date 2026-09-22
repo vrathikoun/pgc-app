@@ -116,6 +116,42 @@ def send_signup_after_payment(email: str) -> None:
     )
 
 
+def send_pack_purchased(
+    email: str, credits: int, valid_until: str, has_account: bool
+) -> None:
+    """Confirme l'achat d'un carnet et explique la règle du décompte."""
+    from app.core.config import settings
+
+    pluriel = "cours" if credits > 1 else "cours"
+    compte = (
+        "<p>Tu peux réserver dès maintenant depuis l'application.</p>"
+        if has_account
+        else f"""
+        <p>Dernière étape : crée ton compte <b>avec cette même adresse</b>
+        ({email}) pour réserver tes cours.</p>
+        <p style="margin:14px 0">
+          <a href="{settings.APP_STORE_URL}">iPhone</a> ·
+          <a href="{settings.PLAY_STORE_URL}">Android</a> ·
+          <a href="{settings.SIGNUP_URL}">application web</a>
+        </p>"""
+    )
+    _send(
+        to=email,
+        subject=f"Ton carnet de {credits} {pluriel} est actif 🥋",
+        html=f"""
+        <h2>Merci, ton carnet est actif !</h2>
+        <p>Tu disposes de <b>{credits} {pluriel}</b>, valables jusqu'au
+        <b>{valid_until}</b>.</p>
+        {compte}
+        <p style="opacity:.85">Comment ça marche : <b>un cours est décompté
+        quand tu réserves</b>, et il t'est <b>rendu si tu annules</b> — même
+        à la dernière minute. Pense donc à annuler si tu ne peux pas venir :
+        tu récupères ton cours et tu libères ta place.</p>
+        <p>À très vite sur les tatamis 💪</p>
+        """,
+    )
+
+
 def send_waitlist_pressure(
     first_name: str, email: str, course_name: str, start_time: str,
     waitlist_count: int, hours_left: int,

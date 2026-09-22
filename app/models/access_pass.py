@@ -20,6 +20,10 @@ MULTI_ENTRY_PASSES = {
 # Pass qui plafonnent à 2 cours par semaine.
 TWO_PER_WEEK_PASSES = {"month_two_per_week", "year_two_per_week"}
 
+# Carnet de cours : un crédit consommé par réservation (et rendu à l'annulation),
+# jamais au scan — le décompte ne dépend pas de la présence d'un coach à l'accueil.
+PACK_PASS = "pack"
+
 
 class AccessPass(Base):
     __tablename__ = "access_passes"
@@ -33,6 +37,9 @@ class AccessPass(Base):
     # Les autres types (voir MULTI_ENTRY_PASSES) sont multi-entrées jusqu'à
     # leur date d'expiration, jamais consommés, renouvellement manuel.
     pass_type = Column(String, nullable=False, default="drop_in")
+
+    # Carnets uniquement : cours restants. NULL pour les autres types de pass.
+    credits_remaining = Column(Integer, nullable=True)
 
     expires_at = Column(DateTime(timezone=True), nullable=False)
     consumed_at = Column(DateTime(timezone=True), nullable=True)

@@ -28,6 +28,8 @@ class Booking(Base):
     # Présence effective : horodaté au scan du QR à l'accueil le jour du cours.
     checked_in_at = Column(DateTime(timezone=True), nullable=True)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    # Carnet ayant payé cette réservation, pour rendre le crédit à l'annulation.
+    access_pass_id = Column(Integer, ForeignKey("access_passes.id"), nullable=True)
 
     # Relations
     member = relationship("Member", back_populates="bookings")

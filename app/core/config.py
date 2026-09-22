@@ -43,6 +43,15 @@ class Settings(BaseSettings):
     PRICE_MONTH_UNLIMITED_CENTS: int = 15000     # 150 € illimité 1 mois
     PRICE_MONTH_TWO_PER_WEEK_CENTS: int = 10000  # 100 € 2 cours/sem 1 mois
     MONTH_PASS_VALIDITY_DAYS: int = 30
+    # Carnets de cours (paiement unique) : montant en centimes → nombre de cours.
+    PACK_PRICES_CENTS: dict[int, int] = {
+        2500: 1,     # 25 €  → 1 cours
+        11000: 5,    # 110 € → 5 cours
+        20000: 10,   # 200 € → 10 cours
+        35000: 20,   # 350 € → 20 cours
+    }
+    PACK_VALIDITY_DAYS: int = 365
+
     # Formules annuelles payées d'avance (engagement 1 an).
     PRICE_YEAR_UNLIMITED_CENTS: int = 108000     # 1080 € illimité 1 an
     PRICE_YEAR_TWO_PER_WEEK_CENTS: int = 78000   # 780 € 2 cours/sem 1 an

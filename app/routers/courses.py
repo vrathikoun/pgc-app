@@ -13,7 +13,7 @@ from app.models.member import Member
 from app.routers.members import get_current_member, require_admin
 from app.schemas.course_schema import CourseCreate, CourseOut, CourseUpdate
 from app.schemas.member_schema import MemberOut
-from app.services import notification_service, waitlist_service
+from app.services import notification_service, pack_service, waitlist_service
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
@@ -139,6 +139,8 @@ def bulk_delete_courses(
 
     snapshots = _snapshot_affected(course_ids_to_delete, db)
 
+    # Carnets : rendre les cours avant de supprimer les réservations.
+    pack_service.refund_for_courses(course_ids_to_delete, db)
     db.query(Booking).filter(Booking.course_id.in_(course_ids_to_delete)).delete(
         synchronize_session=False
     )
@@ -259,6 +261,8 @@ def delete_course(
     course_name = course.name
     course_start = course.start_time
 
+    # Carnets : rendre les cours avant de supprimer les réservations.
+    pack_service.refund_for_courses([course_id], db)
     db.query(Booking).filter(Booking.course_id == course_id).delete(
         synchronize_session=False
     )
@@ -299,6 +303,8 @@ def delete_course_series(
 
     snapshots = _snapshot_affected(ids, db)
 
+    # Carnets : rendre les cours avant de supprimer les réservations.
+    pack_service.refund_for_courses(ids, db)
     db.query(Booking).filter(Booking.course_id.in_(ids)).delete(
         synchronize_session=False
     )

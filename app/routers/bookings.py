@@ -2,12 +2,17 @@ from datetime import timedelta
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.core.timezone import as_utc, now_utc, paris_week_start
 from app.database import get_db
-from app.models.access_pass import TWO_PER_WEEK_PASSES, AccessPass
+from app.models.access_pass import (
+    MULTI_ENTRY_PASSES,
+    PACK_PASS,
+    TWO_PER_WEEK_PASSES,
+    AccessPass,
+)
 from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
 from app.models.member import Member, MemberRole
@@ -15,7 +20,12 @@ from app.routers.members import get_current_member, require_admin
 from app.schemas.booking_schema import BookingCreate, BookingOut, ParticipantOut
 from app.schemas.course_schema import CourseOut
 from app.schemas.member_schema import MemberOut
-from app.services import notification_service, stripe_service, waitlist_service
+from app.services import (
+    notification_service,
+    pack_service,
+    stripe_service,
+    waitlist_service,
+)
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -137,22 +147,42 @@ def create_booking(
     # direct, même contrôle que le QR à l'entrée), ou un pass encore valide
     # (mensuel multi-entrées, ou à l'unité non consommé). Le staff est exempté.
     month_pass_limit = None
+    gate_pass = None
     if current.role == MemberRole.member:
         allowed, reason = stripe_service.check_member_access(current, db)
         if not allowed:
+            # Pass à durée d'abord : on ne brûle un cours de carnet que s'il
+            # n'existe aucun autre droit d'accès valide.
             gate_pass = (
                 db.query(AccessPass)
                 .filter(
                     AccessPass.email == current.email,
                     AccessPass.expires_at > _now_utc(),
                     or_(
-                        AccessPass.pass_type != "drop_in",
-                        AccessPass.consumed_at.is_(None),
+                        AccessPass.pass_type.in_(tuple(MULTI_ENTRY_PASSES)),
+                        and_(
+                            AccessPass.pass_type == "drop_in",
+                            AccessPass.consumed_at.is_(None),
+                        ),
                     ),
                 )
                 .order_by(AccessPass.expires_at.desc())
                 .first()
             )
+            if gate_pass is None:
+                # Carnet : le plus proche de l'expiration en premier, pour ne
+                # pas laisser périmer des cours déjà payés.
+                gate_pass = (
+                    db.query(AccessPass)
+                    .filter(
+                        AccessPass.email == current.email,
+                        AccessPass.expires_at > _now_utc(),
+                        AccessPass.pass_type == PACK_PASS,
+                        AccessPass.credits_remaining > 0,
+                    )
+                    .order_by(AccessPass.expires_at.asc())
+                    .first()
+                )
             if gate_pass is None:
                 raise HTTPException(
                     status_code=403,
@@ -200,6 +230,11 @@ def create_booking(
     db.commit()
     db.refresh(booking)
 
+    # Carnet : un cours est décompté dès la réservation (liste d'attente
+    # comprise) et rendu si le membre se désinscrit.
+    if gate_pass is not None and gate_pass.pass_type == PACK_PASS:
+        pack_service.consume(booking, gate_pass, db)
+
     if status == BookingStatus.waitlist:
         position = _waitlist_position(booking, db)
         notification_service.notify_waitlist_joined(db, current, course, position or 1)
@@ -229,6 +264,9 @@ def cancel_booking(
     booking.status = BookingStatus.cancelled
     booking.cancelled_at = _now_utc()
     db.commit()
+
+    # Carnet : le cours est rendu, quelle que soit l'heure d'annulation.
+    pack_service.refund(booking, db)
 
     # Une place s'est libérée → promeut le(s) premier(s) de la liste d'attente.
     if booking.course:

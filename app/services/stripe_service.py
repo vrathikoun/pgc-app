@@ -13,7 +13,7 @@ import stripe
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.access_pass import AccessPass
+from app.models.access_pass import PACK_PASS, AccessPass
 from app.models.member import Member, SubscriptionPlan, SubscriptionStatus
 from app.models.subscription import PlanType, Subscription, SubscriptionState
 from app.services import email_service
@@ -323,6 +323,8 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
             if created is not None and created.pass_type == "drop_in":
                 # Open mat / cours à l'unité : QR d'entrée par email, sans compte.
                 _safe_send_open_mat_pass(created)
+            elif created is not None and created.pass_type == PACK_PASS:
+                _safe_send_pack(created, db)
             elif created is not None:
                 _safe_send_signup(email)
 
@@ -366,9 +368,19 @@ def _plan_for_amount(amount):
 
 
 def _pass_for_amount(amount):
-    """(type de pass, jours de validité) pour un montant payé, (None, None) si
-    le tarif n'est pas au catalogue. Sous PASS_DROP_IN_MAX_CENTS on considère
-    qu'il s'agit d'un open mat / cours à l'unité."""
+    """(type de pass, jours de validité, crédits) pour un montant payé.
+
+    (None, None, None) si le tarif n'est pas au catalogue. Les carnets portent
+    un nombre de cours ; les autres pass n'ont pas de crédits (None). Sous
+    PASS_DROP_IN_MAX_CENTS, il s'agit d'un open mat / cours à l'unité.
+    """
+    if amount in settings.PACK_PRICES_CENTS:
+        return (
+            PACK_PASS,
+            settings.PACK_VALIDITY_DAYS,
+            settings.PACK_PRICES_CENTS[amount],
+        )
+
     catalogue = {
         settings.PRICE_YEAR_UNLIMITED_CENTS: (
             "year_unlimited",
@@ -388,10 +400,11 @@ def _pass_for_amount(amount):
         ),
     }
     if amount in catalogue:
-        return catalogue[amount]
+        pass_type, days = catalogue[amount]
+        return pass_type, days, None
     if (amount or 0) <= settings.PASS_DROP_IN_MAX_CENTS:
-        return "drop_in", settings.DROP_IN_PASS_VALIDITY_DAYS
-    return None, None
+        return "drop_in", settings.DROP_IN_PASS_VALIDITY_DAYS, None
+    return None, None, None
 
 
 def _create_pass_for_payment(email: str, payment_id, amount_total, db: Session):
@@ -410,11 +423,11 @@ def _create_pass_for_payment(email: str, payment_id, amount_total, db: Session):
         if exists:
             return None
 
-    pass_type, days = _pass_for_amount(amount_total)
+    pass_type, days, credits = _pass_for_amount(amount_total)
     if pass_type is None:
         # Tarif inconnu : ne JAMAIS dégrader un gros paiement en pass 7 jours
         # (un nouveau lien Stripe créé côté club ne doit pas léser l'adhérent).
-        pass_type, days = "month_unlimited", settings.MONTH_PASS_VALIDITY_DAYS
+        pass_type, days, credits = "month_unlimited", settings.MONTH_PASS_VALIDITY_DAYS, None
         print(
             f"[WEBHOOK] ⚠️ tarif inconnu {(amount_total or 0) / 100:.2f} € pour "
             f"{email} → pass mensuel illimité par sécurité (à cartographier)"
@@ -427,12 +440,14 @@ def _create_pass_for_payment(email: str, payment_id, amount_total, db: Session):
         member_id=member.id if member else None,
         expires_at=expires,
         pass_type=pass_type,
+        credits_remaining=credits,
         stripe_payment_id=str(payment_id) if payment_id else None,
     )
     db.add(access_pass)
     db.commit()
     db.refresh(access_pass)
-    print(f"[WEBHOOK] pass {pass_type} créé pour {email} (expire {expires:%d/%m})")
+    detail = f" — {credits} cours" if credits else ""
+    print(f"[WEBHOOK] pass {pass_type}{detail} créé pour {email} (expire {expires:%d/%m})")
     return access_pass
 
 
@@ -497,6 +512,24 @@ def get_or_create_openmat_link() -> str | None:
     except Exception as exc:
         print(f"[OPENMAT] création du lien impossible : {type(exc).__name__}: {exc}")
         return None
+
+
+def _safe_send_pack(access_pass, db: Session) -> None:
+    """Confirmation d'achat d'un carnet — un échec SMTP ne casse pas le webhook."""
+    try:
+        a_un_compte = (
+            db.query(Member).filter(Member.email == access_pass.email).first()
+            is not None
+        )
+        email_service.send_pack_purchased(
+            access_pass.email,
+            access_pass.credits_remaining or 0,
+            f"{access_pass.expires_at:%d/%m/%Y}",
+            a_un_compte,
+        )
+        print(f"[WEBHOOK] carnet confirmé à {access_pass.email}")
+    except Exception as exc:
+        print(f"[WEBHOOK] confirmation carnet NON envoyée : {type(exc).__name__}: {exc}")
 
 
 def _safe_send_open_mat_pass(access_pass) -> None:

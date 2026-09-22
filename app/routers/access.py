@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.security import create_access_token, decode_access_token
 from app.core.timezone import PARIS, fmt_paris, now_paris
 from app.database import get_db
-from app.models.access_pass import MULTI_ENTRY_PASSES, AccessPass
+from app.models.access_pass import MULTI_ENTRY_PASSES, PACK_PASS, AccessPass
 from app.models.booking import Booking, BookingStatus
 from app.models.course import Course
 from app.models.member import Member, MemberRole
@@ -100,6 +100,40 @@ def _check_and_consume_pass(member: Member, db: Session) -> tuple[bool, str]:
     if multi:
         label = MULTI_ENTRY_PASSES[multi.pass_type]
         return True, f"Pass {label} — valable jusqu'au {multi.expires_at:%d/%m/%Y}"
+
+    # Carnet : le cours a déjà été décompté à la réservation. L'entrée n'est
+    # donc ouverte que si le membre a réservé un cours du jour — sinon un
+    # carnet entamé servirait de passe-partout toute l'année.
+    pack = (
+        db.query(AccessPass)
+        .filter(
+            AccessPass.email == member.email,
+            AccessPass.pass_type == PACK_PASS,
+            AccessPass.expires_at > now,
+        )
+        .order_by(AccessPass.expires_at.asc())
+        .first()
+    )
+    if pack:
+        jour = now_paris().replace(hour=0, minute=0, second=0, microsecond=0)
+        reserve_aujourdhui = (
+            db.query(Booking)
+            .join(Course, Booking.course_id == Course.id)
+            .filter(
+                Booking.member_id == member.id,
+                Booking.status == BookingStatus.confirmed,
+                Course.start_time >= jour.astimezone(PARIS),
+                Course.start_time < (jour + timedelta(days=1)).astimezone(PARIS),
+            )
+            .first()
+        )
+        if reserve_aujourdhui:
+            reste = pack.credits_remaining or 0
+            if pack.member_id is None:
+                pack.member_id = member.id
+                db.commit()
+            return True, f"Carnet — {reste} cours restant{'s' if reste > 1 else ''}"
+        return False, "Carnet : aucune réservation pour aujourd'hui"
 
     pass_valide = (
         db.query(AccessPass)
@@ -213,6 +247,8 @@ def verify_access(
             pass_ok, pass_reason = _check_and_consume_pass(member, db)
             if pass_ok:
                 allowed, reason = True, pass_reason
+            elif pass_reason:
+                reason = pass_reason
 
     # Réservations du jour (heure de Paris) : permet à l'accueil de vérifier
     # que le membre assiste bien à un cours qu'il a réservé.
