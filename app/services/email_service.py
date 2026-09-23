@@ -122,7 +122,9 @@ def send_pack_purchased(
     """Confirme l'achat d'un carnet et explique la règle du décompte."""
     from app.core.config import settings
 
-    pluriel = "cours" if credits > 1 else "cours"
+    unite = credits == 1
+    titre = "Ton cours à l'unité est actif 🥋" if unite else f"Ton carnet de {credits} cours est actif 🥋"
+    solde = "<b>1 cours</b>, valable" if unite else f"<b>{credits} cours</b>, valables"
     compte = (
         "<p>Tu peux réserver dès maintenant depuis l'application.</p>"
         if has_account
@@ -137,15 +139,15 @@ def send_pack_purchased(
     )
     _send(
         to=email,
-        subject=f"Ton carnet de {credits} {pluriel} est actif 🥋",
+        subject=titre,
         html=f"""
-        <h2>Merci, ton carnet est actif !</h2>
-        <p>Tu disposes de <b>{credits} {pluriel}</b>, valables jusqu'au
-        <b>{valid_until}</b>.</p>
+        <h2>Merci, ton paiement est confirmé !</h2>
+        <p>Tu disposes de {solde} jusqu'au <b>{valid_until}</b>.</p>
         {compte}
         <p style="opacity:.85">Comment ça marche : <b>un cours est décompté
         quand tu réserves</b>, et il t'est <b>rendu si tu annules</b> — même
-        à la dernière minute. Pense donc à annuler si tu ne peux pas venir :
+        à la dernière minute. N'oublie pas de réserver ton créneau dans
+        l'application : sans réservation, l'accès est refusé à l'entrée. Pense donc à annuler si tu ne peux pas venir :
         tu récupères ton cours et tu libères ta place.</p>
         <p>À très vite sur les tatamis 💪</p>
         """,
