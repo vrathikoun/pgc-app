@@ -58,9 +58,9 @@ class Settings(BaseSettings):
     YEAR_PASS_VALIDITY_DAYS: int = 365
     # Open mat : jauge extérieurs par semaine, et lien de secours si l'API
     # Stripe est injoignable au moment de la redirection /openmat.
-    OPEN_MAT_CAPACITY: int = 12
+    OPEN_MAT_CAPACITY: int = 5
     OPEN_MAT_PRICE_CENTS: int = 500
-    OPEN_MAT_URL: str = "https://buy.stripe.com/6oUcN4cB9ch6cDW9YI0Jq06"
+    OPEN_MAT_URL: str = "https://buy.stripe.com/4gM7sKdFd6WM6fy1sc0Jq0i"
     # Lien envoyé par email après paiement pour créer son compte (app web).
     SIGNUP_URL: str = "https://app.polograpplingclub.com"
     # URL publique de l'API (pour construire les liens d'avatars servis en base).
