@@ -52,6 +52,20 @@ class Settings(BaseSettings):
     }
     PACK_VALIDITY_DAYS: int = 365
 
+    # Accès illimité payé d'avance pour 10 mois.
+    PRICE_TEN_MONTHS_UNLIMITED_CENTS: int = 90000   # 900 €
+    TEN_MONTHS_VALIDITY_DAYS: int = 305
+
+    # Tarifs qui n'ouvrent AUCUN droit dans l'app : stages, camps,
+    # régularisations. Identifiés par leur référence Stripe et non par leur
+    # montant, car deux produits peuvent partager un prix (le camp à 100 €
+    # vaut autant que le pass mensuel 2 cours/semaine).
+    PRICE_IDS_WITHOUT_ACCESS: set[str] = {
+        "price_1UODf8CcpLCxe1ZxwqVSmhXM",  # Stage Selma Essahli Vik
+        "price_1UIOaNCcpLCxe1ZxMcGW1z8R",  # Camp Europe NoGi IBJJF 2026
+        "price_1UHVL7CcpLCxe1ZxGpTfPE2y",  # Régularisation Malek
+    }
+
     # Formules annuelles payées d'avance (engagement 1 an).
     PRICE_YEAR_UNLIMITED_CENTS: int = 108000     # 1080 € illimité 1 an
     PRICE_YEAR_TWO_PER_WEEK_CENTS: int = 78000   # 780 € 2 cours/sem 1 an

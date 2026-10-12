@@ -311,7 +311,9 @@ def handle_webhook(payload: bytes, sig_header: str, db: Session) -> dict:
         email = (session.get("customer_details") or {}).get("email") or session.get(
             "customer_email"
         )
-        if email and session.get("mode") == "payment":
+        if email and session.get("mode") == "payment" and _sans_droit_acces(session):
+            print(f"[WEBHOOK] {email} : tarif événementiel → aucun droit ouvert")
+        elif email and session.get("mode") == "payment":
             created = _create_pass_for_payment(
                 email,
                 session.get("payment_intent") or session.get("id"),
@@ -367,6 +369,27 @@ def _plan_for_amount(amount):
     return None, None
 
 
+def _sans_droit_acces(session) -> bool:
+    """Le paiement porte-t-il un tarif qui n'ouvre aucun droit dans l'app ?
+
+    Reconnu par la référence du tarif Stripe, pas par le montant : deux
+    produits peuvent coûter le même prix (camp 100 € vs pass 2 cours/semaine).
+    En cas d'échec de lecture, on retourne False — mieux vaut un droit ouvert
+    à tort qu'un adhérent légitime bloqué.
+    """
+    if not settings.PRICE_IDS_WITHOUT_ACCESS:
+        return False
+    try:
+        items = stripe.checkout.Session.list_line_items(session["id"], limit=10)
+        for it in items["data"]:
+            prix = _sub_field(it, "price")
+            if prix and _sub_field(prix, "id") in settings.PRICE_IDS_WITHOUT_ACCESS:
+                return True
+    except Exception as exc:
+        print(f"[WEBHOOK] articles illisibles ({type(exc).__name__}) → droit ouvert")
+    return False
+
+
 def _pass_for_amount(amount):
     """(type de pass, jours de validité, crédits) pour un montant payé.
 
@@ -382,6 +405,10 @@ def _pass_for_amount(amount):
         )
 
     catalogue = {
+        settings.PRICE_TEN_MONTHS_UNLIMITED_CENTS: (
+            "ten_months_unlimited",
+            settings.TEN_MONTHS_VALIDITY_DAYS,
+        ),
         settings.PRICE_YEAR_UNLIMITED_CENTS: (
             "year_unlimited",
             settings.YEAR_PASS_VALIDITY_DAYS,

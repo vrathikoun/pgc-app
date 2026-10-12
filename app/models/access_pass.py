@@ -15,6 +15,7 @@ MULTI_ENTRY_PASSES = {
     "month_two_per_week": "mensuel 2 cours/sem",
     "year_unlimited": "annuel illimité",
     "year_two_per_week": "annuel 2 cours/sem",
+    "ten_months_unlimited": "10 mois illimité",
 }
 
 # Pass qui plafonnent à 2 cours par semaine.

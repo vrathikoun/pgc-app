@@ -19,10 +19,14 @@ def test_pass_for_amount():
     # Open mat / cours à l'unité : 7 jours, une entrée.
     assert _pass_for_amount(500) == ("drop_in", 7, None)
     # Tarif inconnu au-dessus du seuil : surtout pas un pass 7 jours.
-    assert _pass_for_amount(90000) == (None, None, None)
+    assert _pass_for_amount(123456) == (None, None, None)
     # Un montant remisé n'est pas au catalogue (780 € - 15 % = 663 €) : c'est
     # pourquoi le webhook transmet amount_subtotal, le montant AVANT réduction.
     assert _pass_for_amount(66300) == (None, None, None)
+
+
+def test_pass_dix_mois():
+    assert _pass_for_amount(90000) == ("ten_months_unlimited", 305, None)
 
 
 def test_carnets():
@@ -39,4 +43,5 @@ def test_carnets():
 if __name__ == "__main__":
     test_pass_for_amount()
     test_carnets()
+    test_pass_dix_mois()
     print("✅ mapping des tarifs et carnets OK")
