@@ -21,6 +21,9 @@ MULTI_ENTRY_PASSES = {
 # Pass qui plafonnent à 2 cours par semaine.
 TWO_PER_WEEK_PASSES = {"month_two_per_week", "year_two_per_week"}
 
+# Pass donnant un accès illimité (par opposition aux formules 2 cours/semaine).
+UNLIMITED_PASSES = {"month_unlimited", "year_unlimited", "ten_months_unlimited"}
+
 # Carnet de cours : un crédit consommé par réservation (et rendu à l'annulation),
 # jamais au scan — le décompte ne dépend pas de la présence d'un coach à l'accueil.
 PACK_PASS = "pack"

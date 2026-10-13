@@ -30,6 +30,7 @@ _LIGHTWEIGHT_MIGRATIONS = [
     "ALTER TABLE access_passes ADD COLUMN IF NOT EXISTS pass_type VARCHAR NOT NULL DEFAULT 'drop_in'",
     "ALTER TABLE access_passes ADD COLUMN IF NOT EXISTS credits_remaining INTEGER",
     "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS access_pass_id INTEGER",
+    "ALTER TABLE academy_videos ADD COLUMN IF NOT EXISTS unlimited_only BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ",
 ]
 

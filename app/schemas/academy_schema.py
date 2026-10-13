@@ -10,6 +10,7 @@ class AcademyVideoCreate(BaseModel):
     youtube_id: str
     description: Optional[str] = None
     sort_order: int = 0
+    unlimited_only: bool = False
 
 
 class AcademyVideoUpdate(BaseModel):
@@ -18,6 +19,7 @@ class AcademyVideoUpdate(BaseModel):
     youtube_id: Optional[str] = None
     description: Optional[str] = None
     sort_order: Optional[int] = None
+    unlimited_only: Optional[bool] = None
 
 
 class AcademyVideoOut(BaseModel):
@@ -27,6 +29,7 @@ class AcademyVideoOut(BaseModel):
     youtube_id: str
     description: Optional[str]
     sort_order: int
+    unlimited_only: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}

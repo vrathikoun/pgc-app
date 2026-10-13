@@ -3,25 +3,63 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from datetime import datetime, timezone
+
 from app.database import get_db
 from app.models.academy_video import AcademyVideo
-from app.models.member import Member
+from app.models.access_pass import UNLIMITED_PASSES, AccessPass
+from app.models.member import (
+    Member,
+    MemberRole,
+    SubscriptionPlan,
+    SubscriptionStatus,
+)
 from app.routers.members import get_current_member, require_admin
 from app.schemas.academy_schema import AcademyVideoCreate, AcademyVideoOut, AcademyVideoUpdate
 
 router = APIRouter(prefix="/academy", tags=["Academy"])
 
 
+def _acces_illimite(member: Member, db: Session) -> bool:
+    """Le membre a-t-il droit aux contenus réservés aux formules illimitées ?
+
+    Le staff voit tout. Sinon il faut un abonnement illimité en cours, ou un
+    pass illimité valide (mensuel, 10 mois, annuel). Les formules 2 cours par
+    semaine, les carnets et les cours d'essai n'y donnent pas droit.
+    """
+    if member.role in (MemberRole.admin, MemberRole.coach):
+        return True
+
+    if (
+        member.subscription_plan == SubscriptionPlan.unlimited
+        and member.subscription_status
+        in (SubscriptionStatus.active, SubscriptionStatus.trial)
+    ):
+        return True
+
+    return (
+        db.query(AccessPass)
+        .filter(
+            AccessPass.email == member.email,
+            AccessPass.pass_type.in_(tuple(UNLIMITED_PASSES)),
+            AccessPass.expires_at > datetime.now(timezone.utc),
+        )
+        .first()
+        is not None
+    )
+
+
 @router.get("/videos", response_model=List[AcademyVideoOut])
 def list_videos(
-    _current: Member = Depends(get_current_member),
+    current: Member = Depends(get_current_member),
     db: Session = Depends(get_db),
 ):
-    return (
-        db.query(AcademyVideo)
-        .order_by(AcademyVideo.section, AcademyVideo.sort_order, AcademyVideo.id)
-        .all()
-    )
+    q = db.query(AcademyVideo)
+    if not _acces_illimite(current, db):
+        q = q.filter(AcademyVideo.unlimited_only.is_(False))
+    return q.order_by(
+        AcademyVideo.section, AcademyVideo.sort_order, AcademyVideo.id
+    ).all()
 
 
 @router.post("/videos", response_model=AcademyVideoOut, status_code=201)
