@@ -663,6 +663,9 @@ class ApiService {
       headers: _headers,
     );
 
+    // 404 = la vidéo n'existe déjà plus : le but est atteint, pas une erreur.
+    if (res.statusCode == 404) return;
+
     _checkStatus(res);
   }
 

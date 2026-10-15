@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from datetime import datetime, timezone
@@ -94,16 +94,22 @@ def update_video(
     return video
 
 
-@router.delete("/videos/{video_id}", status_code=204)
+@router.delete("/videos/{video_id}", status_code=204, response_class=Response)
 def delete_video(
     video_id: int,
     _admin: Member = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    video = db.query(AcademyVideo).filter(AcademyVideo.id == video_id).first()
-    if not video:
-        raise HTTPException(status_code=404, detail="Vidéo introuvable")
+    """Supprime une vidéo. Idempotent : une vidéo déjà absente n'est pas une
+    erreur, le résultat voulu par l'appelant est atteint.
 
-    db.delete(video)
-    db.commit()
-    return None
+    `response_class=Response` est nécessaire : sans lui, FastAPI renvoie un
+    corps JSON `null` avec un code 204, ce qui est interdit par la norme HTTP
+    et peut faire échouer certains clients.
+    """
+    video = db.query(AcademyVideo).filter(AcademyVideo.id == video_id).first()
+    if video is not None:
+        db.delete(video)
+        db.commit()
+
+    return Response(status_code=204)

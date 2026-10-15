@@ -59,13 +59,25 @@ class _AcademyAdminScreenState extends State<AcademyAdminScreen> {
 
     try {
       await context.read<AuthProvider>().api.deleteAcademyVideo(video.id);
-      _load();
+      await _load();
+      if (!mounted) return;
+      // Sans confirmation visible, une suppression réussie est indiscernable
+      // d'un bouton qui ne réagit pas.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('« ${video.title} » supprimée'),
+          backgroundColor: AppColors.green,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Suppression impossible : $e'),
+          backgroundColor: AppColors.danger,
+          duration: const Duration(seconds: 8),
+        ),
+      );
     }
   }
 
