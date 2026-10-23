@@ -36,8 +36,11 @@ class _CourseListScreenState extends State<CourseListScreen> {
 
   /// Jours réservables affichés : d'aujourd'hui jusqu'à la fin de la semaine N+1.
   List<DateTime> get _days {
-    final count = _horizonEnd.difference(_today).inDays;
-    return List.generate(count, (i) => _today.add(Duration(days: i)));
+    final days = <DateTime>[];
+    for (var d = _today; d.isBefore(_horizonEnd); d = addDays(d, 1)) {
+      days.add(d);
+    }
+    return days;
   }
 
   @override

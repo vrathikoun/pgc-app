@@ -50,7 +50,7 @@ PODS:
     - Flutter
   - flutter_secure_storage (6.0.0):
     - Flutter
-  - flutter_zxing (0.0.1):
+  - flutter_zxing (3.0.1):
     - Flutter
   - GoogleDataTransport (10.1.1):
     - nanopb (~> 3.30910.0)
@@ -185,7 +185,7 @@ SPEC CHECKSUMS:
   flutter_inappwebview_ios: b89ba3482b96fb25e00c967aae065701b66e9b99
   flutter_local_notifications: ad39620c743ea4c15127860f4b5641649a988100
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
-  flutter_zxing: e741c4f3335db8910e5c396c4291cdfb320859dc
+  flutter_zxing: f3a9ba9f546fa9d84a8e14734efee8899ab361dc
   GoogleDataTransport: a24e58982ab3ba2f64d79613e027fe7f57e88539
   GoogleUtilities: 766ace00c6b10d8148408f329d10c4f051931850
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326

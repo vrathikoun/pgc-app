@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pgc_app/utils/booking_window.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -34,11 +35,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   DateTime _mondayOf(DateTime d) {
     final day = DateTime(d.year, d.month, d.day);
-    return day.subtract(Duration(days: day.weekday - 1));
+    return addDays(day, -(day.weekday - 1));
   }
 
   List<DateTime> get _weekDays =>
-      List.generate(7, (i) => _weekStart.add(Duration(days: i)));
+      List.generate(7, (i) => addDays(_weekStart, i));
 
   Future<void> _load() async {
     setState(() {
@@ -49,7 +50,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       final api = context.read<AuthProvider>().api;
       final courses = await api.getCourses(
         fromDate: _weekStart,
-        toDate: _weekStart.add(const Duration(days: 7)),
+        toDate: addDays(_weekStart, 7),
       );
       setState(() {
         _courses = courses;
@@ -72,12 +73,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
   void _prevWeek() {
-    setState(() => _weekStart = _weekStart.subtract(const Duration(days: 7)));
+    setState(() => _weekStart = addDays(_weekStart, -7));
     _load();
   }
 
   void _nextWeek() {
-    setState(() => _weekStart = _weekStart.add(const Duration(days: 7)));
+    setState(() => _weekStart = addDays(_weekStart, 7));
     _load();
   }
 
@@ -158,7 +159,7 @@ class _WeekHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final weekEnd = weekStart.add(const Duration(days: 6));
+    final weekEnd = addDays(weekStart, 6);
     final fmt = DateFormat('d MMM', 'fr_FR');
     final label = '${fmt.format(weekStart)} – ${fmt.format(weekEnd)}';
 

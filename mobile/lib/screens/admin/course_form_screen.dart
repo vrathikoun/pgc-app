@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pgc_app/utils/booking_window.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -89,7 +90,7 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
       final count = widget.isEdit ? 1 : (_isRecurring ? _recurrenceWeeks : 1);
 
       for (int i = 0; i < count; i++) {
-        final start = startDateTime.add(Duration(days: 7 * i));
+        final start = addDays(startDateTime, 7 * i);
         final end = start.add(Duration(minutes: _durationMinutes));
         if (widget.isEdit) {
           await api.updateCourse(
